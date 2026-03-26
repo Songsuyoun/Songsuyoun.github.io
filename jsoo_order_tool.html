@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>더제이수 발주서 엑셀 생성기</title>
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+:root {
+  --primary: #2D4A6E;
+  --primary-light: #E8EDF4;
+  --accent: #E85D5D;
+  --surface: #FFFFFF;
+  --surface-2: #F8F9FB;
+  --surface-3: #F0F2F6;
+  --border: #E2E6EE;
+  --text-main: #1A2233;
+  --text-sub: #5A6478;
+  --text-hint: #9AA3B5;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 12px rgba(45,74,110,0.08);
+  --shadow-lg: 0 8px 32px rgba(45,74,110,0.14);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: #EEF1F7; color: var(--text-main); min-height: 100vh; }
+
+/* ── TOP BAR ── */
+.top-bar {
+  background: var(--primary);
+  height: 56px; padding: 0 32px;
+  display: flex; align-items: center; gap: 10px;
+  position: sticky; top: 0; z-index: 100;
+}
+.logo-mark {
+  width: 30px; height: 30px; background: #fff; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 12px; color: var(--primary); flex-shrink: 0;
+}
+.logo-text { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.95); }
+.top-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.vendor-status {
+  font-size: 11px; color: rgba(255,255,255,0.6);
+  display: flex; align-items: center; gap: 5px;
+}
+.vendor-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.3); flex-shrink: 0;
+}
+.vendor-dot.loaded { background: #69E06A; }
+.vendor-btn {
+  padding: 6px 14px; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.vendor-btn:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); }
+
+/* ── LAYOUT ── */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 540px;
+  gap: 20px;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 28px 32px 60px;
+  align-items: stretch;
+}
+@media (max-width: 960px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { order: -1; }
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 0.5px solid var(--border);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.card-head {
+  padding: 16px 22px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.card-head-title { font-size: 14px; font-weight: 500; color: var(--text-sub); }
+.card-body { padding: 20px; }
+
+/* ── UPLOAD AREA ── */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--surface-2);
+  position: relative;
+}
+.upload-zone:hover, .upload-zone.drag-over { border-color: var(--primary); background: var(--primary-light); }
+.upload-zone.has-file { border-color: #4CAF50; border-style: solid; background: #F0FFF2; }
+.upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-icon-wrap {
+  width: 44px; height: 44px; border-radius: 11px;
+  background: var(--primary-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin: 0 auto 10px;
+}
+.upload-zone.has-file .upload-icon-wrap { background: #D6F5D8; }
+.upload-main-text { font-size: 14px; font-weight: 500; color: var(--text-sub); margin-bottom: 3px; }
+.upload-sub-text { font-size: 11px; color: var(--text-hint); }
+.upload-filename { font-size: 12px; color: #3E9E42; font-weight: 500; margin-top: 6px; }
+
+/* ── RUN BUTTON ── */
+.run-btn {
+  width: 100%; padding: 15px;
+  background: var(--primary); color: white;
+  border: none; border-radius: var(--radius-sm);
+  font-size: 15px; font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer; transition: all 0.2s; margin-top: 16px;
+}
+.run-btn:hover:not(:disabled) { background: #1e3a5c; box-shadow: var(--shadow-lg); }
+.run-btn:disabled { background: var(--border); color: var(--text-hint); cursor: not-allowed; }
+
+/* ── PROGRESS ── */
+.progress-wrap { display: none; margin-top: 16px; }
+.step-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 7px;
+  font-size: 12px; color: var(--text-hint);
+  transition: all 0.18s;
+}
+.step-row.running { color: var(--primary); background: var(--primary-light); font-weight: 500; }
+.step-row.done { color: #3E9E42; background: #F0FFF2; }
+.step-row.error { color: var(--accent); background: #FFF0F0; }
+.step-ic { font-size: 12px; width: 14px; flex-shrink: 0; }
+
+/* ── SIDEBAR ── */
+.sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── NOTICE PANEL (4번 품절 복사) ── */
+.notice-panel {
+  background: #FFFDE7;
+  border: 1.5px solid #F5D800;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.notice-head {
+  padding: 14px 20px;
+  background: #FFF8C5;
+  border-bottom: 1px solid #F5D800;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+}
+.notice-head-left { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #7A6200; }
+.notice-dot { width: 8px; height: 8px; border-radius: 50%; background: #F5D800; flex-shrink: 0; }
+.notice-copy-btn {
+  padding: 7px 18px; background: #2D4A6E; color: white;
+  border: none; border-radius: 6px; font-size: 13px; font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+  display: flex; align-items: center; gap: 5px;
+}
+.notice-copy-btn:hover { background: #1e3a5c; }
+.notice-copy-btn.copied { background: #4CAF50; }
+.notice-body { padding: 16px 20px; min-height: 120px; }
+.notice-empty { font-size: 13px; color: #B8A832; text-align: center; padding: 28px 0; }
+.notice-item {
+  padding: 10px 14px; margin-bottom: 8px;
+  background: rgba(255,248,0,0.15); border-radius: 8px;
+  border-left: 4px solid #F5D800;
+}
+.notice-item-name { font-size: 13px; font-weight: 500; color: #5A4A00; line-height: 1.5; }
+.notice-item-opt { font-size: 12px; color: #8A7A20; margin-top: 3px; }
+
+/* ── ALERT BADGES (마르셀, KDG) ── */
+.alert-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 16px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500; margin-bottom: 10px;
+  border: 0.5px solid;
+}
+.alert-row.blue { background: #E8F3FF; border-color: #99C5F8; color: #1A4A7A; }
+.alert-row.purple { background: #F2EAFF; border-color: #C0A0F0; color: #4A2A8A; }
+.alert-row.red { background: #FFF2F2; border-color: #FFAAAA; color: #8A2020; }
+.alert-count {
+  margin-left: auto; font-weight: 700; font-size: 16px; flex-shrink: 0;
+}
+.alert-detail {
+  font-size: 12px; padding: 3px 14px 7px 20px; line-height: 1.6;
+}
+
+/* ── RULES ACCORDION ── */
+.accordion-trigger {
+  width: 100%; padding: 12px 16px;
+  background: none; border: none;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; font-weight: 500; color: var(--text-sub);
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer; border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+.accordion-trigger:hover { background: var(--surface-3); }
+.accordion-arrow { transition: transform 0.2s; font-size: 10px; color: var(--text-hint); }
+.accordion-arrow.open { transform: rotate(180deg); }
+.accordion-body { display: none; padding: 0 16px 14px; }
+.accordion-body.open { display: block; }
+.rule-row {
+  display: flex; gap: 9px; align-items: flex-start;
+  font-size: 12px; line-height: 1.5; color: var(--text-main);
+  padding: 4px 0;
+}
+.rule-n {
+  flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--primary); color: white;
+  font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; margin-top: 1px;
+}
+
+/* ── RESULT ── */
+.result-section { display: none; margin-top: 16px; }
+.summary-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;
+}
+.sum-tile {
+  background: var(--surface-2); border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+}
+.sum-tile .n { font-size: 20px; font-weight: 700; color: var(--primary); line-height: 1; margin-bottom: 3px; }
+.sum-tile .l { font-size: 10px; color: var(--text-hint); }
+
+.missing-item {
+  font-size: 12px; color: var(--accent); padding: 7px 10px;
+  background: #FFF2F2; border-radius: 6px;
+  border: 0.5px solid #FFBBBB; margin-bottom: 6px;
+}
+
+.download-btn {
+  width: 100%; padding: 14px;
+  background: #2E7D32; color: white;
+  border: none; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer; transition: all 0.2s; margin-top: 6px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.download-btn:hover { background: #1B5E20; box-shadow: var(--shadow-lg); }
+.reset-link {
+  display: block; text-align: center; margin-top: 10px;
+  font-size: 12px; color: var(--text-hint); cursor: pointer;
+  text-decoration: underline;
+}
+.reset-link:hover { color: var(--text-sub); }
+
+/* ── VENDOR POPUP ── */
+.popup-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45); z-index: 1000;
+  display: none; align-items: center; justify-content: center;
+}
+.popup-overlay.show { display: flex; }
+.popup-box {
+  background: white; border-radius: var(--radius);
+  padding: 28px 28px 24px; max-width: 460px; width: 90%;
+  box-shadow: var(--shadow-lg);
+}
+.popup-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.popup-desc { font-size: 13px; color: var(--text-sub); margin-bottom: 18px; line-height: 1.6; }
+.popup-upload-zone {
+  border: 2px dashed var(--border); border-radius: var(--radius-sm);
+  padding: 24px 20px; text-align: center; cursor: pointer;
+  transition: all 0.2s; background: var(--surface-2); position: relative;
+  margin-bottom: 16px;
+}
+.popup-upload-zone:hover { border-color: var(--primary); background: var(--primary-light); }
+.popup-upload-zone.has-file { border-color: #4CAF50; border-style: solid; background: #F0FFF2; }
+.popup-upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.popup-upload-text { font-size: 13px; font-weight: 500; color: var(--text-sub); }
+.popup-upload-filename { font-size: 12px; color: #3E9E42; font-weight: 500; margin-top: 6px; }
+.popup-vendor-list {
+  max-height: 140px; overflow-y: auto;
+  background: var(--surface-2); border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border); padding: 8px 12px;
+  margin-bottom: 16px; display: none;
+}
+.popup-vendor-item { font-size: 12px; color: var(--text-main); padding: 3px 0; border-bottom: 0.5px solid var(--border); }
+.popup-vendor-item:last-child { border-bottom: none; }
+.popup-vendor-count { font-size: 11px; color: var(--text-hint); margin-bottom: 6px; }
+.popup-btns { display: flex; gap: 8px; }
+.popup-confirm {
+  flex: 1; padding: 10px; background: var(--primary); color: white;
+  border: none; border-radius: 7px; font-size: 13px; font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: all 0.15s;
+}
+.popup-confirm:hover { background: #1e3a5c; }
+.popup-cancel {
+  padding: 10px 18px; background: none;
+  border: 0.5px solid var(--border); border-radius: 7px;
+  font-size: 13px; color: var(--text-sub);
+  font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: all 0.15s;
+}
+.popup-cancel:hover { background: var(--surface-3); }
+
+/* ── MISSING POPUP ── */
+.missing-popup-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45); z-index: 1000;
+  display: none; align-items: center; justify-content: center;
+}
+.missing-popup-overlay.show { display: flex; }
+.missing-popup-box {
+  background: white; border-radius: var(--radius);
+  padding: 28px 28px 24px; max-width: 420px; width: 90%;
+  box-shadow: var(--shadow-lg);
+}
+.missing-popup-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--accent); }
+.missing-popup-desc { font-size: 12px; color: var(--text-sub); margin-bottom: 14px; line-height: 1.6; }
+.missing-popup-list { list-style: none; display: flex; flex-direction: column; gap: 5px; margin-bottom: 18px; }
+.missing-popup-list li {
+  font-size: 12px; padding: 7px 10px;
+  background: #FFF2F2; border-radius: 6px; color: var(--accent);
+  border: 0.5px solid #FFBBBB; font-weight: 500;
+}
+.missing-popup-close {
+  width: 100%; padding: 10px; background: var(--primary); color: white;
+  border: none; border-radius: 7px; font-size: 13px; font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif; cursor: pointer;
+}
+.missing-popup-close:hover { background: #1e3a5c; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="logo-mark">JS</div>
+  <span class="logo-text">더제이수 발주서 엑셀 생성기</span>
+  <div class="top-actions">
+    <div class="vendor-status">
+      <div class="vendor-dot" id="vendor-dot"></div>
+      <span id="vendor-status-text">거래처 미등록</span>
+    </div>
+    <button class="vendor-btn" onclick="openVendorPopup()">거래처 추가 / 업데이트</button>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="layout">
+
+  <!-- LEFT: 업로드 + 처리 -->
+  <div style="display:flex; flex-direction:column;">
+    <!-- 업로드 카드 -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <span style="font-size:16px">📂</span>
+        <span class="card-head-title">재고 파일 업로드</span>
+      </div>
+      <div class="card-body">
+        <div class="upload-zone" id="stock-drop"
+          ondragover="onDrag(event,'stock')" ondragleave="offDrag('stock')" ondrop="onDrop(event,'stock')">
+          <input type="file" accept=".xlsx,.xls" id="stock-file" onchange="handleFile(event,'stock')">
+          <div class="upload-icon-wrap">📊</div>
+          <div class="upload-main-text" id="stock-main-text">엑셀 파일을 드래그하거나 클릭해서 업로드</div>
+          <div class="upload-sub-text">stk_stock*.xlsx 파일을 선택해주세요</div>
+          <div class="upload-filename" id="stock-name"></div>
+        </div>
+
+        <button class="run-btn" id="run-btn" onclick="run()" disabled>파일을 먼저 업로드해주세요</button>
+
+        <!-- 진행 상황 -->
+        <div class="progress-wrap" id="progress-wrap">
+          <div id="step-list"></div>
+        </div>
+
+        <!-- 결과 요약 -->
+        <div class="result-section" id="result-section">
+          <div style="height:1px; background:var(--border); margin:16px 0;"></div>
+          <div class="summary-row" id="summary-row"></div>
+          <div id="missing-area"></div>
+          <div class="card" style="background:#F0FFF2; border-color:#B2E5B9; border:0.5px solid #B2E5B9; border-radius:var(--radius-sm); padding:16px 18px; margin-top:4px;">
+            <div style="font-size:12px; color:#3E7A42; font-weight:500; margin-bottom:10px;">처리 완료! 아래 버튼으로 파일을 저장하세요.</div>
+            <button class="download-btn" onclick="downloadFile()">⬇ 완성된 발주서 엑셀 다운로드</button>
+          </div>
+          <span class="reset-link" onclick="resetAll()">↺ 처음으로 돌아가기</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 처리 항목 아코디언 — flex:1로 남은 높이 채움 -->
+    <div class="card" style="flex:1; display:flex; flex-direction:column;">
+      <button class="accordion-trigger" onclick="toggleRules(this)">
+        <span>처리 항목 보기</span>
+        <span class="accordion-arrow" id="rules-arrow">▼</span>
+      </button>
+      <div class="accordion-body" id="rules-body">
+        <div class="rule-row"><div class="rule-n">1</div><span>1행 필터 설정 + 상단 고정</span></div>
+        <div class="rule-row"><div class="rule-n">2</div><span>F열 상품명 오름차순 정렬</span></div>
+        <div class="rule-row"><div class="rule-n">3</div><span><b>마르셀 실키 반목 T</b> 포함 행 → 연파랑 배경</span></div>
+        <div class="rule-row"><div class="rule-n">4</div><span><b>the J.Soo</b> + O열 품절/품절예정(진행 없음) → 목록 추출 후 해당 행 삭제</span></div>
+        <div class="rule-row"><div class="rule-n" style="font-size:8px;">4-B</div><span>사입 상품 중 Q열(품절여부) = <b>품절</b> → 사입 품절 목록 추출 후 해당 행 삭제</span></div>
+        <div class="rule-row"><div class="rule-n">5</div><span><b>the J.Soo</b> 포함 행 중 3·4번 미해당 → 전체 삭제</span></div>
+        <div class="rule-row"><div class="rule-n">6</div><span>공급처명 <b>KDG</b> → 연보라 배경</span></div>
+        <div class="rule-row"><div class="rule-n">7</div><span>C열(연락처) 또는 D열(위치) 빈칸 → 거래처 LIST에서 자동 보완</span></div>
+        <div class="rule-row"><div class="rule-n">8</div><span>A열 마지막입고일 → 오늘 날짜로 변경</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: 사이드바 -->
+  <div class="sidebar" style="align-items:stretch;">
+
+    <!-- 4번: 품절 복사 패널 -->
+    <div class="notice-panel">
+      <div class="notice-head">
+        <div class="notice-head-left">
+          <div class="notice-dot" id="soldout-dot" style="background:rgba(245,216,0,0.3)"></div>
+          <span>제작 상품 품절 목록</span>
+        </div>
+        <button class="notice-copy-btn" id="copy-btn" onclick="copyText()" style="display:none">
+          <span>📋</span> 복사하기
+        </button>
+      </div>
+      <div class="notice-body" id="notice-body">
+        <div class="notice-empty" id="notice-empty">처리 후 품절 항목이 여기에 표시됩니다</div>
+        <div id="soldout-items"></div>
+        <div id="soldout-copy-text" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- 사입 상품 품절 패널 -->
+    <div class="notice-panel" style="border-color:#F5A623; background:#FFFAF0;">
+      <div class="notice-head" style="background:#FFF3D6; border-color:#F5A623;">
+        <div class="notice-head-left">
+          <div class="notice-dot" id="saip-soldout-dot" style="background:rgba(245,166,35,0.3)"></div>
+          <span style="color:#7A4A00;">사입 상품 품절 목록</span>
+        </div>
+        <button class="notice-copy-btn" id="saip-copy-btn" onclick="copySaipText()" style="display:none; background:#8B5E00;">
+          <span>📋</span> 복사하기
+        </button>
+      </div>
+      <div class="notice-body" id="saip-notice-body">
+        <div class="notice-empty" id="saip-notice-empty" style="color:#C48A30;">처리 후 사입 품절 항목이 표시됩니다</div>
+        <div id="saip-soldout-items"></div>
+        <div id="saip-soldout-copy-text" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- 3번: 마르셀 / 6번: KDG 알림 — flex:1로 남은 높이 채움 -->
+    <div class="card" style="flex:1; display:flex; flex-direction:column;">
+      <div class="card-head">
+        <span style="font-size:14px">📋</span>
+        <span class="card-head-title">주의 항목 알림</span>
+      </div>
+      <div class="card-body" style="padding:16px 20px; flex:1;" id="alerts-body">
+        <div style="font-size:13px; color:var(--text-hint); text-align:center; padding:20px 0;">처리 후 확인 항목이 표시됩니다</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- hidden file input - lives outside popup to avoid z-index issues -->
+<input type="file" accept=".xlsx,.xls" id="vendor-file" style="display:none" onchange="handleVendorFile(event)">
+
+<!-- ── 거래처 팝업 ── -->
+<div class="popup-overlay" id="vendor-popup" onclick="vendorOverlayClick(event)">
+  <div class="popup-box" id="vendor-popup-box"
+    ondragover="onDragPopup(event)" ondragleave="offDragPopup(event)" ondrop="onDropPopup(event)">
+    <div class="popup-title">거래처 LIST 업로드</div>
+    <div class="popup-desc">현재 <b>611개</b> 거래처 정보가 기본으로 내장되어 있습니다.<br>신규 거래처가 추가된 LIST 파일을 업로드하면 자동으로 병합되며, <b>다음에 열어도 추가 거래처가 그대로 유지</b>됩니다.</div>
+
+    <!-- 드래그 앤 드롭 영역 (시각적) -->
+    <div id="vendor-drop-zone" style="
+      border: 2px dashed var(--border); border-radius: var(--radius-sm);
+      padding: 24px 20px; text-align: center; margin-bottom: 14px;
+      background: var(--surface-2); transition: all 0.2s; cursor: pointer;
+    " onclick="document.getElementById('vendor-file').click()">
+      <div style="font-size:28px; margin-bottom:8px;">📂</div>
+      <div id="vendor-drop-main" style="font-size:13px; font-weight:500; color:var(--text-sub); margin-bottom:4px;">여기에 파일을 드래그하거나</div>
+      <button type="button" onclick="event.stopPropagation(); document.getElementById('vendor-file').click()" style="
+        padding:7px 18px; background:var(--primary); color:white; border:none;
+        border-radius:6px; font-size:12px; font-weight:500;
+        font-family:'Noto Sans KR',sans-serif; cursor:pointer; margin-top:4px;
+      ">파일 선택하기</button>
+      <div id="vendor-filename" style="font-size:12px; color:#3E9E42; font-weight:500; margin-top:8px; display:none;"></div>
+    </div>
+
+    <div class="popup-vendor-list" id="vendor-preview">
+      <div class="popup-vendor-count" id="vendor-count"></div>
+      <div id="vendor-list-items"></div>
+    </div>
+    <div class="popup-btns">
+      <button class="popup-cancel" onclick="closeVendorPopup()">닫기</button>
+      <button class="popup-confirm" id="vendor-confirm" onclick="confirmVendor()">저장하고 닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 누락 거래처 팝업 ── -->
+<div class="missing-popup-overlay" id="missing-popup">
+  <div class="missing-popup-box">
+    <div class="missing-popup-title">거래처 정보를 찾을 수 없습니다</div>
+    <div class="missing-popup-desc">아래 공급처는 거래처 LIST에서 일치하는 항목을 찾지 못했습니다. 엑셀에서 직접 입력해주세요.</div>
+    <ul class="missing-popup-list" id="missing-popup-list"></ul>
+    <button class="missing-popup-close" onclick="closeMissingPopup()">확인</button>
+  </div>
+</div>
+
+<script>
+const BUILTIN_VENDORS = [{"n":"JJ","t":"2117-8826","l":"디오트 B1-D-24"},{"n":"가스나\\","t":"2117-8683","l":"디오트 2-F-3"},{"n":"굿시스터","t":"2117-8868","l":"디오트 B1-A-9"},{"n":"드고유","t":"2117-8046","l":"apm place 348"},{"n":"그라찌","t":"2117-4009","l":"디오트 B1-E-17"},{"n":"그레이","t":"2117-8238","l":"디오트 B1-i-5"},{"n":"그루브","t":"2117-4888","l":"디오트 B2-나-9"},{"n":"그라티아","t":"010-3390-3993","l":"청평화 5-가-29"},{"n":"그리핑","t":"2232-5949","l":"청평화 B1-나-8"},{"n":"글로우님프","t":"2250-1890","l":"APM B1-8"},{"n":"글로우","t":"010-4917-0833","l":"신발상가 C-1-42"},{"n":"김언니","t":"2117-4896","l":"디오트4-C-8"},{"n":"꼬모","t":"2237-4342","l":"디오트 3-A-8"},{"n":"나나","t":"2252-5998","l":"청평화 4-C-22"},{"n":"나나제이","t":"2117-8161","l":"디오트 3-A-17"},{"n":"나난","t":"010-3900-1148","l":"디오트 4-H-13"},{"n":"네오","t":"010-8011-8091","l":"디오트 3-F-7"},{"n":"네온히치","t":"2117-4864","l":"디오트 4-F-10"},{"n":"내티","t":"010-7488-9549","l":"디오트 2-H-25"},{"n":"노티스","t":"010-2926-4029","l":"디오트 4-C-17"},{"n":"노리타","t":"2256-4567","l":"디오트 4-E-18"},{"n":"노블","t":"2254-1957","l":"청평화 3-가-57"},{"n":"노메럴","t":"2117-4202","l":"디오트 3-E-16"},{"n":"노이","t":"010-9855-8482","l":"누죤 5-315"},{"n":"노프라블럼","t":"2117-8720","l":"디오트 B1-d-23"},{"n":"노크노크","t":"2117-8316","l":"디오트 4-B-13"},{"n":"노조아","t":"02-231-0408","l":"apm luxe 2-217"},{"n":"누에보","t":"010-3496-6780","l":"디오트 B2-D-25"},{"n":"놈코어","t":"2117-4178","l":"디오트 3-E-23"},{"n":"누크","t":"010-9139-8758","l":"디오트 1-B-29"},{"n":"누벨","t":"010-2663-6144","l":"신발상가 1-37"},{"n":"뉴진","t":"010-5956-4841","l":"디오트 B2-가-11,12"},{"n":"니브","t":"010-3666-0105","l":"디오트 B2-B-5"},{"n":"너울","t":"2236-1993","l":"벨포스트 3-87"},{"n":"님프","t":"2117-8489","l":"디오트 4-H-5,6"},{"n":"다빈","t":"2117-4479","l":"디오트 4-E-13"},{"n":"다온","t":"010-5286-0902","l":"디자이너 B2-15"},{"n":"르와드","t":"2117-4135","l":"디오트 4-H-5"},{"n":"달팡","t":"2117-4440","l":"디오트 1-E-24"},{"n":"담다","t":"010-2407-9160","l":"신발상가 C-1-1"},{"n":"대영상사","t":"2252-9213","l":"신평화 1층 A동 63,21"},{"n":"더메인","t":"2117-4850","l":"디오트 B2-E-16"},{"n":"더모드9","t":"2117-8936","l":"디오트 3-J-28"},{"n":"더바바라","t":"010-8098-4707","l":"디오트 3-C-18"},{"n":"더그리다","t":"2117-4782","l":"디오트 4-i-13"},{"n":"더뉴","t":"2117-4889","l":"디오트 4-f-1"},{"n":"만식슈","t":"010-4228-6656","l":"신발상가 C-1-41"},{"n":"더라크림","t":"010-7411-4430","l":"디오트 3-H-3"},{"n":"더 준","t":"010-7277-5879","l":"디오트 3-i-4"},{"n":"더블인","t":"010-6270-5209","l":"디오트 3-G-7"},{"n":"더메인","t":"2231-4749","l":"쳥평화 4-C-32,33"},{"n":"더리플레르","t":"010-3916-4010","l":"디오트 3-h-9"},{"n":"더메인","t":"2117-4850","l":"디오트 4-D-23"},{"n":"더라인","t":"010-2841-2874","l":"신발상가 C-1-39"},{"n":"더레스트","t":"2250-0228","l":"APM 2-28"},{"n":"더베이지스","t":"2231-2227","l":"apm luxe 2-227"},{"n":"더블비","t":"2117-8199","l":"디오트 B1-L-1"},{"n":"더블엠","t":"2117-8144","l":"디오트 2-A-13"},{"n":"더블유","t":"2117-8126","l":"디오트 7-i-2"},{"n":"더블유네이비","t":"6970-7481","l":"퀸즈스퀘어 3-81"},{"n":"더블제이","t":"2232-0521","l":"청평화 5-라-4"},{"n":"더스티밀러","t":"2117-8476","l":"디오트 B2-C-25"},{"n":"더시스","t":"2117-4886","l":"디오트 4-H-5"},{"n":"더코인","t":"2117-8498","l":"디오트 4-G-15"},{"n":"더풀하우스","t":"2252-2447","l":"청평화 1-다-15"},{"n":"데얼바이","t":"2117-8460","l":"디오트 3-i-7"},{"n":"데이시크","t":"010-5007-3770","l":"디오트 2-B-28"},{"n":"데이트","t":"2117-4015","l":"디오트 B1-F-4"},{"n":"댄지","t":"010-2678-7540","l":"청평화 2-라-36"},{"n":"델리케이트","t":"2117-4066","l":"디오트 B1-L-9"},{"n":"도레미어패럴","t":"2117-8091","l":"디오트 4-A-20"},{"n":"도리","t":"2117-4859","l":"디오트 4-i-3"},{"n":"도이가","t":"010-9118-6130","l":"디오트 B1-A-7"},{"n":"도리스","t":"2117-4717","l":"디오트 3-F5"},{"n":"동대문","t":"2117-4031","l":"디오트 2-D-20"},{"n":"두림","t":"010-7937-7071","l":"청평화 5-나-3"},{"n":"두잇","t":"2117-4277","l":"디오트 3-i-19"},{"n":"오르디(구.듀플로)","t":"2250-1132","l":"APM 1-132"},{"n":"드라이블루","t":"2117-4631","l":"디오트 3-f-6"},{"n":"드라이플라워","t":"2117-8419","l":"디오트 B2-D-13"},{"n":"드마르","t":"2250-1390","l":"APM B1-20"},{"n":"드래이핑","t":"2117-8636","l":"디오트 B1-J-10"},{"n":"드레스 마피아","t":"2117-4647","l":"디오트 3-B-15"},{"n":"드레스웰","t":"2117-4316","l":"디오트 3-C-13"},{"n":"드레스코드","t":"2117-8968","l":"디오트 4-H-28"},{"n":"언더스탠딩","t":"2250-0758","l":"apm B1-24"},{"n":"드클로즈","t":"2117-4664","l":"디오트 4-D-3"},{"n":"드폰드","t":"***-****-5470","l":"디오트 B1-G-19"},{"n":"디다크","t":"2117-8528","l":"디오트 2-i-20"},{"n":"디뮤어(구.보니)","t":"2117-8353","l":"디오트 4-J-22"},{"n":"디스이즈","t":"2117-8552","l":"디오트 3-J-31"},{"n":"디앤제이","t":"2117-8867","l":"디오트 2-J-9"},{"n":"디어","t":"2117-8402","l":"디오트 4-E-29"},{"n":"디얼그레이","t":"2117-8355","l":"디오트 B2-C-25"},{"n":"디에이The A","t":"2117-8296","l":"디오트 3-E-24"},{"n":"디코드","t":"***-****-2818","l":"동원 B1층 132호"},{"n":"딘","t":"2117-8417","l":"디오트 4-f-2"},{"n":"딥","t":"2253-6681","l":"디오트 1-A-20"},{"n":"딜라이트(Delight)","t":"2233-9658","l":"청평화 4-B-46"},{"n":"딜라잇","t":"2117-4046","l":"디오트 B2-G25-1"},{"n":"뚜따","t":"2117-4664","l":"디오트 3-A-11"},{"n":"딸래미","t":"2232-5510","l":"청평화 5-가-555"},{"n":"라우쉬","t":"2250-1252","l":"APM 2-205"},{"n":"라이크워터","t":"2117-4044","l":"디오트 4-g-17"},{"n":"라미제이","t":"***-****-8712","l":"디오트 4-F-7"},{"n":"라비(광덕)","t":"2250-1432","l":"부산광역시 부산 진구 신앙로9  범천빌딩 302호"},{"n":"라붐","t":"2117-8027","l":"디오트 2-B-8"},{"n":"라스텔라","t":"2117-8116","l":"디오트3-A-6"},{"n":"라쏭","t":"2117-8590","l":"디오트4-I-9"},{"n":"라우드","t":"010-4876-9272","l":"디오트 B2-C-22"},{"n":"라운드제이","t":"2232-4054","l":"청평화 4-D-30,31"},{"n":"라운지베라","t":"2117-8241","l":"디오트 4-C-7"},{"n":"라이브포에버","t":"2117-8525","l":"디오트 4-G-1"},{"n":"랑스","t":"2254-4476","l":"청평화 4-가-34"},{"n":"러브샷","t":"2117-8561","l":"디오트 B1-B-1"},{"n":"러브앤헤이트","t":"2232-7729","l":"청평화 5-다-25"},{"n":"러브미모어","t":"010-9808-3461","l":"디오트 3-C-06"},{"n":"러브어스","t":"010-6764-2694","l":"디오트 4-H-10"},{"n":"러브유쏘머치","t":"2117-4449","l":"디오트 4-D-11"},{"n":"러블","t":"010-2800-0402","l":"디오트 4-B-26"},{"n":"러빗","t":"2117-4973","l":"디오트 3-E-17"},{"n":"러스티","t":"2117-4418","l":"디오트 4-J-21"},{"n":"럭키스토어","t":"2117-8121","l":"디오트 4-G-10"},{"n":"런던레이스","t":"2117-4712","l":"디오트 4-i-7"},{"n":"럽럽","t":"2117-8293","l":"디오트 4-H-12"},{"n":"랜느","t":"010-9841-6999","l":"신발상가 C동 1층 20호"},{"n":"레드제이","t":"2117-4916","l":"디오트 3-B-16"},{"n":"레어썸","t":"2117-4237","l":"디오트 3-F-4"},{"n":"레몬","t":"010-6352-6142","l":"신발상가 B-1-가25"},{"n":"레뜨왈","t":"2231-5131","l":"APM LUXE B1-31"},{"n":"레어스","t":"6270-2403","l":"유어스 3-78"},{"n":"레이브","t":"2117-4595","l":"디오트 3-J-13"},{"n":"레주르","t":"010-3283-4905","l":"청평화 5-나-44"},{"n":"레인우드","t":"010-9756-3676","l":"디오트 B1-D-18"},{"n":"레인드롭","t":"2117-4856","l":"디오트 4-B-24"},{"n":"레터링","t":"2117-4045","l":"디오트 4-J-7"},{"n":"로그","t":"010-3760-0256","l":"신발상가 c동 2F-56"},{"n":"레트로드레스","t":"2117-8048","l":"디오트4-A-23"},{"n":"로그먼트","t":"2117-4750","l":"디오트 B1-G-22"},{"n":"로얄치즈","t":"2117-4660","l":"디오트 4-E-3,4"},{"n":"로와드(구.다올)","t":"2117-4135","l":"디오트 3-B-18"},{"n":"로이","t":"2117-4419","l":"디오트 B1-G-24"},{"n":"로쉘","t":"2117-8650","l":"디오트 B1-A-8"},{"n":"로지","t":"2117-4490","l":"디오트 4-F-19"},{"n":"로하트","t":"010-2245-2133","l":"디오트 2-D-3"},{"n":"로프트","t":"2117-4458","l":"디오트 3-i-19"},{"n":"룰루12","t":"2117-8213","l":"디오트 B2-C-20"},{"n":"룸잉","t":"2117-4666","l":"디오트 3-F-12"},{"n":"루어","t":"010-4205-8877","l":"디오트 B1-G-11"},{"n":"르뽀렘","t":"6970-7566","l":"퀸즈스퀘어 3-115"},{"n":"르날드","t":"6270-1030","l":"유어스 1-63"},{"n":"르마레","t":"010-5483-9917","l":"청평화 1-다"},{"n":"로제르","t":"010-4947-7076","l":"디오트 2-A-19"},{"n":"르오브(구.베르디)","t":"2250-1234","l":"APM 2층 34호"},{"n":"르누보","t":"010-2955-3990","l":"디오트 4-E-14"},{"n":"르블랑","t":"010-5825-6389","l":"디오트 4-A-1"},{"n":"르에이","t":"2117-8656","l":"디오트 3-J-9"},{"n":"르솜","t":"010-7912-9568","l":"디오트 B2-A-11"},{"n":"르코이","t":"010-3434-5284","l":"디오트 B1 J-18"},{"n":"르테일러","t":"2117-8879","l":"디오트 B1-J-1"},{"n":"리뉴얼(르레브)","t":"2117-4824","l":"디오트 4-D-19"},{"n":"리센스","t":"2232-4010","l":"청평화 1-다-29"},{"n":"리디아","t":"2117-4549","l":"디오트 1-f-19"},{"n":"리리","t":"2117-8664","l":"디오트 B1-H-19"},{"n":"리자드스탠다드","t":"010-3389-0605","l":"디오트 B2-N-68"},{"n":"링크","t":"2117-8535","l":"디오트 2-i-13"},{"n":"리미티드","t":"2117-4785","l":"디오트 3-F-13"},{"n":"리버티","t":"2117-4547","l":"디오트 3-E-19"},{"n":"리브레","t":"2117-8951","l":"디오트 B1-E-10"},{"n":"리썸","t":"2117-4908","l":"디오트 B2-B-13"},{"n":"리얼펄리","t":"2117-8438","l":"디오트 3-H-10"},{"n":"리플","t":"2117-4405","l":"디오트 4-G-5"},{"n":"리오더","t":"2117-4858","l":"디오트 4-C-30"},{"n":"리엔","t":"010-4289-9987","l":"청평화 3-라-14"},{"n":"린다","t":"2117-4428","l":"디오트 4-G-2"},{"n":"린제이","t":"2117-4052","l":"디오트 3-D-13"},{"n":"링오브노이","t":"2117-4424","l":"디오트 4-E-10"},{"n":"림쏭","t":"2117-4853","l":"디오트 B1-J-14"},{"n":"립플레이스","t":"010-9087-7127","l":"디오트 3-i-26"},{"n":"링(RING)","t":"2117-4606","l":"디오트 4-B-22"},{"n":"마니모","t":"6970-7633","l":"광희 5-58"},{"n":"마리드","t":"010-6519-2511","l":"디오트 2-G-5"},{"n":"마르셀","t":"010-3319-4116","l":"디오트 5-F-27"},{"n":"마스터피스","t":"2250-1923","l":"apm B1-152"},{"n":"마리앤","t":"2117-4822","l":"디오트 B2-H-5,6"},{"n":"마레모해","t":"010-5573-5747","l":"디오트 4층 H-3"},{"n":"무튼","t":"010-2504-0177","l":"디오트 4-4B-7"},{"n":"마랑","t":"2252-3034","l":"청평화 4-D-21"},{"n":"마블","t":"2117-4648","l":"디오트 4-i-05"},{"n":"마스","t":"2117-8760","l":"디오트 B1-j-26"},{"n":"마요네즈","t":"2117-8978","l":"디오트 3-H-15"},{"n":"르헤베(구.마이영)","t":"2117-8083","l":"디오트 5-J-26"},{"n":"마이션","t":"2117-4541","l":"디오트 4-G-4"},{"n":"마인디","t":"2117-4108","l":"디오트 B2-D-24"},{"n":"마카롱","t":"2117-8807","l":"디오트 4-E-20"},{"n":"말파","t":"2117-4321","l":"디오트 4-A-3"},{"n":"만식슈","t":"010-4228-6656","l":"신발상가 C-1-41"},{"n":"레인드롭","t":"2117-4856","l":"디오트 4-B-24"},{"n":"맨하탄","t":"2117-8383","l":"디오트 3-B-9"},{"n":"머시룸","t":"010-4865-7332","l":"디오트 B2-C-25"},{"n":"머머링","t":"2117-4415","l":"디오트 4-H-18"},{"n":"먼데이","t":"2117-4119","l":"디오트 B2-C-16"},{"n":"메르제","t":"2117-8488","l":"디오트 3-J-1"},{"n":"메이빈","t":"010-7791-7918","l":"디오트 3-B-13"},{"n":"메인","t":"010-9050-6137","l":"디오트 3-F-21"},{"n":"메이비앤코","t":"2117-4993","l":"디오트 3-J-23"},{"n":"메이크제이","t":"3298-1122","l":"디자이너 B1-9"},{"n":"메인스트릿","t":"010-8214-4410","l":"디오트 4-A-10"},{"n":"메인제이","t":"2117-4984","l":"디오트 3-H-26"},{"n":"멜라운지","t":"2117-8715","l":"디오트 3-H-8"},{"n":"멜로즈","t":"2231-1741","l":"청평화 4-B-24"},{"n":"멜론","t":"2117-4992","l":"디오트 1-C-18"},{"n":"멜티드","t":"2117-8529","l":"디오트 3-i-10"},{"n":"모노클","t":"2117-8327","l":"디오트 B1-J-29"},{"n":"모조","t":"010-3671-1080","l":"신발상가 C-2-12"},{"n":"모어","t":"010-3221-2872","l":"청평화 5-가-42,43"},{"n":"모다","t":"2237-8711","l":"디자이너 B1-34"},{"n":"모다","t":"2252-0803","l":"청평화 2-라-4"},{"n":"모던바이실","t":"2117-4945","l":"디오트 4-E-19"},{"n":"모리바이시스","t":"2231-8926","l":"청평화 5-라-27"},{"n":"모모코","t":"2117-4347","l":"디오트 B1-J-26"},{"n":"몽구스","t":"2117-8274","l":"디오트 B1-J-13"},{"n":"모이라이","t":"2117-8042","l":"디오트 4-A-13"},{"n":"목화씨","t":"2117-4133","l":"디오트 3-B-8"},{"n":"몬트","t":"010-4164-2633","l":"신발상가 C-1-45"},{"n":"몰디브","t":"2117-8401","l":"디오트 1-C-27"},{"n":"묘","t":"2117-8762","l":"디오트 B1-A-3"},{"n":"무드랩","t":"2117-8233","l":"디오트 B1-E-5"},{"n":"무드온","t":"010-9618-8288","l":"신발상가 B-2-43"},{"n":"무드베이지","t":"2117-8461","l":"디오트 3-J-27"},{"n":"무이","t":"010-5744-1141","l":"신발상가 C-1-23"},{"n":"무이모나","t":"2117-8151","l":"디오트 4-D-03"},{"n":"무브먼트","t":"2117-8612","l":"디오트 2-J-16"},{"n":"무이비엔","t":"010-9122-0182","l":"Apm Place 2F 263"},{"n":"뮤즈(MUSE)","t":"2232-2890","l":"청평화 5-라-536"},{"n":"미니진","t":"2117-8310","l":"디오트 B1-J-11"},{"n":"미네트","t":"2117-4249","l":"디오트3 -F-18"},{"n":"미드나잇선","t":"2117-4034","l":"디오트 4-C-16"},{"n":"미쓰진","t":"010-4991-7888","l":"디오트 4-G-8"},{"n":"미엘","t":"010-3266-1411","l":"청평화 1-나-9"},{"n":"미엘르","t":"2117-4635","l":"디오트 B1-i-17"},{"n":"민잇","t":"2117-8997","l":"디오트 B1-E-12-1"},{"n":"미코","t":"2117-8140","l":"디오트 4-A-17"},{"n":"밀도","t":"2117-8938","l":"디오트 B1-G-4"},{"n":"멜로우","t":"010-9104-6220","l":"신발상가 C-3-가-23"},{"n":"밍키","t":"2231-8157","l":"청평화 B1-바-7"},{"n":"바운드","t":"2117-8804","l":"디오트 5-F-14"},{"n":"바디펀","t":"010-5409-5782","l":"청평화 3-라-23"},{"n":"바니스","t":"2253-2662","l":"청평화 4-C-401"},{"n":"비비드","t":"2117-4672","l":"디오트 B1-L-1"},{"n":"바니플라워","t":"2117-4338","l":"디오트 B1-G-3"},{"n":"바바라부","t":"2234-4515","l":"청평화 신관B1-9"},{"n":"바나듐","t":"2233-1736","l":"청평화 5-라-7"},{"n":"바르셀로나","t":"2117-8857","l":"디오트 B1-A-1"},{"n":"바스","t":"2117-4020","l":"디오트 5-H-19"},{"n":"바스키아","t":"2117-8031","l":"디오트 4-A-8"},{"n":"바이라니","t":"2117-8040","l":"디오트 B1-H-9"},{"n":"바이릴리","t":"2117-4910","l":"디오트 1-i-5"},{"n":"바이미니","t":"2117-4117","l":"디오트 4-E-1"},{"n":"바이붐","t":"2117-4377","l":"디오트 B1-A-3"},{"n":"바이슈가","t":"2117-4319","l":"디오트 3-D-19"},{"n":"바이더슈","t":"2117-4710","l":"디오트 4-C-18"},{"n":"바이시아","t":"2234-0626","l":"청평화 5-가-18"},{"n":"바이엘","t":"010-9534-9338","l":"청평화 5-라-22"},{"n":"바인","t":"010-3189-5024","l":"디오트 5-A-22"},{"n":"바이진","t":"2117-4480","l":"디오트 3-E-29"},{"n":"바잉","t":"010-8240-5630","l":"청평화 4-C-20"},{"n":"바인야드","t":"2250-1881","l":"apm B1-25"},{"n":"반아","t":"2236-0048","l":"청평화 5-라-48"},{"n":"버블언더","t":"2117-8817","l":"디오트 4-C-17"},{"n":"버튼","t":"010-6346-6607","l":"신발상가 C동 1층 53호"},{"n":"번영사","t":"2235-2816","l":"신평화 1층 A동 58호"},{"n":"베니","t":"010-7645-3011","l":"청평화 4-C-45"},{"n":"벌스데이","t":"2117-8541","l":"디오트 3-i-2"},{"n":"베러","t":"2117-8210","l":"APM 1-59"},{"n":"베르네프","t":"2231-8392","l":"APM 4-401"},{"n":"베른","t":"010-2870-5632","l":"디오트 B1-F-17"},{"n":"베리모어","t":"010-2754-3587","l":"디오트 B1-B-3"},{"n":"베리베리","t":"2117-8791","l":"디오트 B1-J-5"},{"n":"벨르","t":"010-2122-9051","l":"디오트 2-i-20"},{"n":"부(BOO)","t":"2117-8855","l":"디오트 B1-L-08"},{"n":"부티크로즈","t":"010-4582-3773","l":"디오트 B2-i-13"},{"n":"붐","t":"2233-5403","l":"청평화 4-B-402"},{"n":"브랜디","t":"2252-1215","l":"청평화 5-라-5"},{"n":"블랜드","t":"010-6584-5359","l":"청평화 4-나-28"},{"n":"블랜딩","t":"2117-8574","l":"디오트 B1-H-1"},{"n":"브리즈","t":"2117-4232","l":"디오트 4-H-19"},{"n":"브론즈베리","t":"010-7169-8545","l":"디오트 2-F-18"},{"n":"브링","t":"2117-8023","l":"디오트 4-G-2"},{"n":"블랙폼","t":"2117-4844","l":"디오트 5층 F-22"},{"n":"블랙라인","t":"2117-4102","l":"디오트 3-E-5"},{"n":"블랙레이디","t":"2117-8618","l":"디오트 3-A-19"},{"n":"블랙스모키","t":"2117-4930","l":"디오트 4-E-25"},{"n":"블랭크","t":"2117-8389","l":"디오트 4-H-16"},{"n":"블러드무드","t":"2117-4979","l":"디오트 B2-i-24"},{"n":"블러셔","t":"2117-8103","l":"디오트 B1-F-03"},{"n":"블럭","t":"2117-4259","l":"디오트 4-C-14"},{"n":"블레스유","t":"2117-4284","l":"디오트 1-C-5"},{"n":"블론드","t":"2234-6576","l":"청평화 5-다-10"},{"n":"블루걸","t":"2117-4453","l":"디오트 3-G-4"},{"n":"블루레이크","t":"2117-8505","l":"디오트 2-B17"},{"n":"블루베어","t":"2117-4587","l":"디오트 3-E-13"},{"n":"블루아이","t":"2236-1231","l":"청평화 4-A-444"},{"n":"블룸","t":"2117-4221","l":"디오트 B1-G-17"},{"n":"블룸","t":"010-3787-6207","l":"청평화 5-가-26"},{"n":"블리스&바셀","t":"2231-5096","l":"청평화 5-나-517"},{"n":"블리스","t":"2117-4548","l":"디오트 B1-J-01"},{"n":"블로윙","t":"010-7253-1680","l":"디오트 3-H-21"},{"n":"블링","t":"2117-4740","l":"디오트 4-G-8"},{"n":"비마인","t":"2117-4833","l":"디오트 3-E-8"},{"n":"비비엘","t":"2117-4556","l":"디오트 2-D-10"},{"n":"비바글램","t":"2117-8477","l":"디오트 4-J-26"},{"n":"비바이숑","t":"2117-8474","l":"디오트 4-i-20"},{"n":"비브르","t":"2117-4303","l":"디오트 4-J-20"},{"n":"비앤부","t":"2117-8485","l":"디오트 3-H-5"},{"n":"비커밍","t":"2236-4624","l":"청평화 4-C-3"},{"n":"빌리지","t":"2235-8553","l":"디오트 B1-J-9"},{"n":"사라","t":"2117-4728","l":"디오트 B1-E-15"},{"n":"사운드","t":"2117-4840","l":"디오트 4-J-11"},{"n":"서울러","t":"010-9759-2052","l":"디오트 1-C-13"},{"n":"선데이","t":"2117-4972","l":"디오트 4-H-17"},{"n":"세라비","t":"2117-8995","l":"디오트 3-i-17"},{"n":"센토","t":"010-9843-4889","l":"apm place 7-25"},{"n":"세러데이","t":"2117-4119","l":"디오트 4-G-6"},{"n":"셀로나","t":"010-9222-7744","l":"디오트 5-D-16"},{"n":"셀렉트","t":"2117-4630","l":"디오트 3-E-10"},{"n":"송","t":"2237-2202","l":"청평화 4-B-414"},{"n":"소프","t":"010-7629-3015","l":"디오트 3-C-15"},{"n":"쇼퍼홀릭","t":"2117-4551","l":"디오트 B1-F-8"},{"n":"SOO&JUNE(수앤준)","t":"6970-7779","l":"퀸즈스퀘어 5-27"},{"n":"수퍼발리","t":"2117-8148","l":"디오트 B1-i-4"},{"n":"슈퍼","t":"010-2636-8069","l":"디오트 5-A-9"},{"n":"슈퍼비","t":"2117-4068","l":"디오트 4-C-11"},{"n":"스랍&아하","t":"2117-4649","l":"디오트 3-D-15"},{"n":"스타일스크랩","t":"2117-8414","l":"디오트 4-D-4"},{"n":"스테이블","t":"2254-0250","l":"청평화 B1-나-7"},{"n":"스토리태그","t":"2117-4773","l":"디오트 4-D-15"},{"n":"스톤베이지","t":"2232-3976","l":"청평화 5-가-49"},{"n":"스토리","t":"010-8193-0070","l":"서울 동대문구 장안동459-3 대일빌딩401호"},{"n":"스튜디오그레이","t":"2117-4778","l":"디오트 4-B-16"},{"n":"스크램블","t":"010-3771-8813","l":"디오트 B1-K-13"},{"n":"슬로우피플","t":"010-4141-1629","l":"벨포스트 2-22"},{"n":"슬릭","t":"2117-4504","l":"디오트 B1-H-7"},{"n":"심플","t":"2238-3345","l":"청평화 B1-다-10"},{"n":"심플먼트","t":"2117-4539","l":"디오트 3-C-26"},{"n":"솔트비","t":"010-7731-7775","l":"디오트 5-D-11"},{"n":"심플베이지","t":"2117-4911","l":"디오트 3-G-10"},{"n":"쏠제이(SOL.J)","t":"2117-8616","l":"디오트 B2-A-9"},{"n":"이안","t":"2252-5252","l":"청평화 1-가-4"},{"n":"이유","t":"010-9927-1017","l":"디오트 2-B-17"},{"n":"이르","t":"2117-8166","l":"디오트 3-B-3"},{"n":"아델","t":"2117-4365","l":"디오트 2-A-16"},{"n":"아도라","t":"2117-8440","l":"디오트 B1-i-18"},{"n":"아라모드","t":"2117-4909","l":"디오트 4-i-14"},{"n":"아페리얼","t":"2117-8603","l":"디오트 4-G-10"},{"n":"아리키시","t":"010-3725-8716","l":"디오트 4-E-17"},{"n":"아베끄","t":"2117-4042","l":"디오트 4-F-25"},{"n":"아보카도","t":"2117-4865","l":"디오트 4-C-9"},{"n":"아스카","t":"2117-8614","l":"디오트 B2-B-24"},{"n":"아울","t":"2117-8464","l":"디오트 4-C-09"},{"n":"아이유","t":"010-4465-0639","l":"디오트 4-B-15"},{"n":"아워","t":"2117-4128","l":"디오트 4-J-5"},{"n":"아이보리","t":"2117-8243","l":"디오트 4-C-6"},{"n":"아임히어","t":"2117-4898","l":"디오트 4-D-5"},{"n":"아임블링","t":"6270-1193","l":"유어스 1-33"},{"n":"아임파인땡큐","t":"2117-8976","l":"디오트 4-H-15"},{"n":"아워웨이브","t":"010-3846-3888","l":"APM LUXE 6-23"},{"n":"아우라","t":"2117-8966","l":"디오트 1-J-9"},{"n":"아지트","t":"2117-4368","l":"디오트 B1-J-18"},{"n":"아크미","t":"2117-8602","l":"디오트 3-D-11"},{"n":"아톰","t":"2117-8255","l":"디오트 2-F-10"},{"n":"아처","t":"2250-1116","l":"APM 1-16"},{"n":"안단테","t":"010-6775-0820","l":"디오트 1-C-14"},{"n":"아호이","t":"2117-4201","l":"디오트 4-D-11"},{"n":"알뤼르","t":"010-4252-2451","l":"디오트 4-D-7"},{"n":"알로하","t":"2233-3046","l":"청평화 3-가-46"},{"n":"알유핫","t":"010-4409-1999","l":"디오트 4-H-19"},{"n":"앙버터","t":"010-5920-3052","l":"디오트 3-i-5"},{"n":"앙쥬","t":"2117-8470","l":"디오트 4-C-20"},{"n":"애니짱","t":"010-5313-5756","l":"청평화 2-라-36"},{"n":"애플비","t":"2231-6129","l":"청평화 5-가-45"},{"n":"애플앤딜리셔스","t":"010-8223-8843","l":"디오트 B1-B-4"},{"n":"애플트리","t":"6366-3983","l":"뉴존 B1-523,524"},{"n":"앤유브라운","t":"010-8777-8212","l":"디오트 B1-E-1-1"},{"n":"앤드바이엘","t":"2117-8405","l":"디오트 B1-G-17"},{"n":"앤드꼬모","t":"2117-4614","l":"디오트 4-J-30"},{"n":"앤드미크","t":"2117-8046","l":"디오트 4-C-03"},{"n":"앤드모어","t":"2117-3315","l":"디오트 3-F-15"},{"n":"앤드유에디션(구.럭키그라운드)","t":"2200-5094","l":"apm place 3-23"},{"n":"앤써(에드프로덕트)","t":"010-9913-4009","l":"디오트 4-i-15-1"},{"n":"앤코","t":"2117-4288","l":"디오트B1-G-11"},{"n":"어나더","t":"010-8477-2438","l":"디오트 2-D-13"},{"n":"어라운드110","t":"2117-4471","l":"디오트 B2-E-24"},{"n":"어니스티","t":"2117-4668","l":"디오트 2-J-15"},{"n":"어라이크","t":"2117-8599","l":"디오트 3-C-9"},{"n":"어모먼트","t":"2117-8060","l":"디오트 B1-C-22"},{"n":"어메이든","t":"2117-8982","l":"디오트 5-B-6"},{"n":"어뮤즈","t":"2117-4337","l":"디오트 B2-E-16"},{"n":"어바웃페이스","t":"2117-4025","l":"디오트 3-A-24"},{"n":"어반스테이","t":"2117-8427","l":"디오트 2-J-26"},{"n":"어셈블리","t":"2231-3556","l":"APM LUXE 5-532"},{"n":"어스","t":"2117-8342","l":"디오트 3-H-9"},{"n":"어썸플레인","t":"010-9281-1705","l":"디오트 4-C-3"},{"n":"어텐션","t":"2117-4016","l":"디오트 4-A-15"},{"n":"어퍼스타","t":"2117-8190","l":"디오트 4-J-31"},{"n":"온니","t":"2117-4559","l":"디오트 3-C-28"},{"n":"언더스탠딩","t":"2250-0758","l":"apm B1-24"},{"n":"언더트리","t":"2117-8718","l":"디오트 4-A-19"},{"n":"언커먼","t":"010-4627-6990","l":"청평화 5-나-13"},{"n":"언커버","t":"2117-8039","l":"디오트 4-B-5"},{"n":"언세인","t":"010-3939-4023","l":"디오트 4-A-23"},{"n":"엄핏","t":"010-5738-1733","l":"디오트 2-G-7"},{"n":"언토이","t":"2117-4963","l":"디오트 4-A-18"},{"n":"업밀리언","t":"010-9233-6130","l":"청평화 1-라-34"},{"n":"얼로우","t":"2117-8329","l":"디오트 B1-H-17"},{"n":"앤드바이럴","t":"2117-8405","l":"디오트 B1-G-17"},{"n":"에픽","t":"010-4561-8961","l":"청평화 5-나-525"},{"n":"에스더블유샵","t":"2117-8450","l":"디오트 4-B-4"},{"n":"원썸아이","t":"010-4549-2502","l":"디오트 3-J-16"},{"n":"엘로이","t":"010-6228-8649","l":"디오트 4-B-23"},{"n":"에이트글로우","t":"010-4345-8583","l":"디오트 4-E-29"},{"n":"에테모와이","t":"010-8887-1660","l":"디오트 3-i-25"},{"n":"에르메","t":"2117-4488","l":"디오트 4-B-27"},{"n":"웨어미","t":"2117-4159","l":"디오트 4-J-4"},{"n":"웨더이즈굿","t":"010-7109-3570","l":"디오트 4-H-2"},{"n":"에브리썬데이","t":"2117-8548","l":"디오트 4-C-14"},{"n":"에브리띵 위드 미","t":"2117-4530","l":"디오트 4-i-2"},{"n":"에이드","t":"2117-8468","l":"디오트 3-F-5"},{"n":"에이미컴퍼니","t":"2117-4053","l":"디오트 4-H-20"},{"n":"더샌드(엘엠티(L/M/T)","t":"2250-1667","l":"APM B1-18"},{"n":"에이블랙","t":"2117-4772","l":"디오트 3-A-22"},{"n":"에이원","t":"2117-8949","l":"디오트 B1-F-07"},{"n":"엣디스모먼트","t":"2117-8180","l":"디오트 4-B-15"},{"n":"오스로","t":"010-3223-5951","l":"디오트 5-B-6"},{"n":"엠디","t":"2235-0888","l":"청평화 1-다-18"},{"n":"엠오엘(MOL)","t":"010-2822-4530","l":"디오트 5-A-8"},{"n":"오쓰오쓰","t":"2236-4125","l":"청평화 5-다-2"},{"n":"오브유","t":"2200-5019","l":"apm place 519"},{"n":"오예","t":"2117-4502","l":"디오트 4-G-23"},{"n":"오블리크","t":"2236-6918","l":"청평화 5-가-17"},{"n":"오프터스","t":"010-5327-3843","l":"디오트 3-D-2"},{"n":"오픈런","t":"2117-8687","l":"디오트 3-E-17"},{"n":"온더블룸","t":"010-3787-6207","l":"청평화 5-가-26"},{"n":"온앤온","t":"010-4156-2159","l":"신발상가 C-2-43"},{"n":"온도","t":"2117-8867","l":"디오트 B1-L-4"},{"n":"온텀","t":"2117-8660","l":"디오트 3-J-10"},{"n":"올제","t":"02-2117-8769","l":"디오트 4-i-16"},{"n":"와썹","t":"010-2210-6720","l":"신발상가 C동 1층 32호"},{"n":"웨이팅","t":"2254-0107","l":"청평화 B1-다-12"},{"n":"웨이비","t":"010-9653-0620","l":"디오트 B1-A-10"},{"n":"웨어로우","t":"010-5480-3779","l":"디오트 5층 f-19"},{"n":"웨어러블 리메이크","t":"2117-8565","l":"apm Luxe 1-106"},{"n":"웨어미","t":"2117-4159","l":"디오트 4-J-4"},{"n":"웰로우","t":"2117-8351","l":"디오트 4-f-4"},{"n":"위드","t":"2117-8286","l":"디오트 3-E-9"},{"n":"위드비","t":"2117-4581","l":"디오트 B1-G-7"},{"n":"위즈원","t":"2117-8259","l":"디오트 2-E-23"},{"n":"위즈투","t":"2117-8836","l":"디오트 1-B-15"},{"n":"유아뷰티풀","t":"2117-4646","l":"디오트 4-J-21"},{"n":"유앤미","t":"2117-8696","l":"디오트 1-F-7"},{"n":"이너프","t":"2117-4618","l":"디오트 4-F-21"},{"n":"이브닝샌드","t":"2117-8929","l":"디오트 B1-H-25"},{"n":"이니셜","t":"2117-4171","l":"디오트 2-C-17"},{"n":"이사칠","t":"010-8241-2470","l":"디오트 2-F-4"},{"n":"이오","t":"2231-0485","l":"apm Luxe B1-B112"},{"n":"이오(청평)","t":"010-3541-5157","l":"청평화 5-가-25"},{"n":"이음","t":"02-2250-0797","l":"apm 1층 49"},{"n":"이크무이","t":"010-5919-3085","l":"디오트 B1-D-4"},{"n":"이프유","t":"2117-8921","l":"디오트 3-G-19"},{"n":"이합사","t":"2253-5058","l":"청평화 B1-나-12"},{"n":"일미리","t":"2117-4468","l":"디오트 4-H-11"},{"n":"잇썸","t":"2117-8364","l":"디오트 3-F-24"},{"n":"재미주","t":"010-9293-6130","l":"디오트 2-F-12"},{"n":"잭슨","t":"2117-8706","l":"디오트 3-E-25"},{"n":"제이제이(JJ)","t":"2117-8826","l":"디오트 B1-C-21"},{"n":"제이듀","t":"2236-8858","l":"청평화 4-A-28"},{"n":"제이투","t":"2117-8773","l":"디오트 2-J-2"},{"n":"제이캣","t":"2117-8085","l":"디오트 B1-D-8"},{"n":"제이그레이","t":"2117-4725","l":"디오트 4-A-2"},{"n":"제이리커버","t":"2234-2713","l":"청평화 2-나-23"},{"n":"제이나인","t":"2117-8903","l":"디오트 B2-D-21"},{"n":"제이라떼","t":"010-3718-8410","l":"디오트 4-J-23"},{"n":"제이런","t":"2117-4555","l":"디오트 4-C-13"},{"n":"제이스토리","t":"2117-4527","l":"디오트  B1-C-2"},{"n":"제이앨리스","t":"2117-8034","l":"디오트 4-F-17"},{"n":"제이윤","t":"2117-4129","l":"디오트 3-C-10"},{"n":"베러","t":"2250-1459","l":"apm 1-59"},{"n":"제이피엑스","t":"2231-3286","l":"apm Luxe B1-110"},{"n":"제인","t":"010-6486-6268","l":"신발상가 C-1-14"},{"n":"제인모리스","t":"2117-4621","l":"디오트 4-A-21"},{"n":"쥬드","t":"2235-8215","l":"청평화 5-나-547"},{"n":"쥬디스","t":"2117-8592","l":"디오트 1-i-12"},{"n":"지니","t":"2117-8647","l":"디오트 4-F-23"},{"n":"지오","t":"764-7533","l":"신발상가 C동1층40호"},{"n":"지수","t":"2117-4280","l":"디오트 4-i-13"},{"n":"찜","t":"2117-4360","l":"디오트 3-A-18"},{"n":"초이스","t":"010-6706-6459","l":"청평화 2-라-3"},{"n":"촘촘","t":"010-4124-2576","l":"신발상가 D-2-30"},{"n":"찬스","t":"2117-4349","l":"디오트 B1-G-13"},{"n":"캐스터네츠","t":"010-4246-5088","l":"디오트 B1-K-5"},{"n":"캔들","t":"010-9122-0182","l":"디오트 2-A-20"},{"n":"커먼","t":"010-8585-6809","l":"신발상가 C동 1층 57"},{"n":"커밍제이","t":"2117-8575","l":"디오트 3-H-13"},{"n":"컴히얼","t":"2117-4627","l":"디오트 4-E-13"},{"n":"키키","t":"010-2295-7768","l":"청평화  B1-가-2"},{"n":"커버","t":"2117-8546","l":"디오트 3-C-1"},{"n":"케이트","t":"010.4243.4288","l":"청평화 5-다-44"},{"n":"키치","t":"010-6586-1582","l":"디오트 5-J-17"},{"n":"케미","t":"2231-1400","l":"청평화 B1-가-6"},{"n":"코너샵","t":"2233-4521","l":"청평화 3-라-48"},{"n":"코지하우스","t":"010-8418-7444","l":"디오트-3-C-3"},{"n":"코즈캣","t":"2117-8813","l":"디오트 3-i-15"},{"n":"코코리","t":"2117-4617","l":"디오트 3-H-04"},{"n":"코코마티니","t":"2117-8486","l":"디오트 3-H-7"},{"n":"코코제이닛시","t":"2117-4063","l":"디오트 4-G-9"},{"n":"코이","t":"010-3434-5284","l":"디오트 2-B-6"},{"n":"코쿤","t":"2117-4972","l":"디오트 3-D-10"},{"n":"콘티","t":"010-3179-3663","l":"청평화 4-A-37"},{"n":"크렘","t":"010-5082-8208","l":"디오트 2-J-8"},{"n":"쿨피스","t":"2117-4070","l":"디오트 4-D-20"},{"n":"쿠잉","t":"2117-8935","l":"디오트 3-E-27"},{"n":"크림","t":"010-7604-1340","l":"신발상가 C-1-34"},{"n":"크롱","t":"2117-4210","l":"디오트 3-C-2"},{"n":"클린","t":"010-8328-5758","l":"디오트 B1-i-18"},{"n":"클라썸","t":"2117-8780","l":"디오트 3-J-18"},{"n":"클레오","t":"2235-8140","l":"청평화 2-나-27"},{"n":"클로스","t":"2231-6943","l":"apm Luxe 203"},{"n":"타히티","t":"2117-4431","l":"디오트 4-J-13"},{"n":"탭페이지","t":"2117-4112","l":"디오트3-H-4"},{"n":"탱크걸","t":"2117-4142","l":"디오트 4-H-23"},{"n":"테라이즈","t":"010-4995-0521","l":"디오트 2-F-4"},{"n":"테이크","t":"010-7597-0600","l":"신평화 4-A-443"},{"n":"테일즈","t":"010-3510-0818","l":"디오트 4-J-28"},{"n":"투유","t":"2117-8201","l":"디오트 4-E-25"},{"n":"트로피","t":"2117-4716","l":"디오트 4-J-16"},{"n":"트릴리언","t":"010-3317-0528","l":"디오트 B1-B-10"},{"n":"티엔","t":"2117-4214","l":"디오트 B1-J-20"},{"n":"트웬티","t":"2117-4570","l":"디오트 3-D-21"},{"n":"티케","t":"2250-1297","l":"apm B1-39"},{"n":"티니","t":"010-7259-0223","l":"청평화 5-다-28"},{"n":"트웰브","t":"2117-4882","l":"디오트 4-F-12"},{"n":"토레","t":"010-6644-5589","l":"apm Luxe B2-1"},{"n":"틴트","t":"2235-1151","l":"디오트 3-E-6"},{"n":"파니니","t":"2117-4245","l":"디오트 B2-D-30"},{"n":"파이버","t":"010-9598-0060","l":"디오트 3-E-12"},{"n":"팍써","t":"2117-8278","l":"디오트 B2-G-25"},{"n":"팔팔","t":"2117-8663","l":"디오트 4-i-20"},{"n":"페어링","t":"010-4647-4170","l":"APM LUXE 4-17"},{"n":"패키지","t":"2117-4697","l":"디오트 4-F-22"},{"n":"퍼블릭","t":"2117-4144","l":"디오트 1-E-12"},{"n":"퍼번트","t":"010-6774-2356","l":"디오트 B1-k-11"},{"n":"퍼스트런","t":"2117-8708","l":"디오트 3-G-14"},{"n":"퍼플","t":"2117-4560","l":"디오트 4-H-01"},{"n":"핑크펌킨","t":"2117-4552","l":"디오트 3-B-02"},{"n":"펀치","t":"2252-6406","l":"청평화 B1-신관-5호"},{"n":"페니엘","t":"2238-8649","l":"청평화 4-B-44"},{"n":"페이버","t":"2117-8834","l":"디오트 3-i-12"},{"n":"페퍼","t":"2117-4678","l":"디오트 3-F-16"},{"n":"페퍼솔트","t":"2117-4678","l":"디오트 4-G-19"},{"n":"페이지원","t":"2234-5060","l":"청평화 5-가-6"},{"n":"페라리","t":"2117-4675","l":"디오트 4-H-15"},{"n":"포니테일","t":"010-2223-7801","l":"디오트 B1-F-13"},{"n":"포러데이","t":"2117-4450","l":"디오트 3-i-16"},{"n":"포레스트","t":"2117-8514","l":"디오트 3-D-16"},{"n":"포에트","t":"2117-8733","l":"디오트 4-J-10"},{"n":"포마드","t":"2117-8311","l":"디오트 4-D-9"},{"n":"포커페이스","t":"2117-8694","l":"디오트 4-E-10"},{"n":"포티포우먼(구.팔팔)","t":"010-8006-5009","l":"디오트 B1-H-16"},{"n":"포포","t":"2117-4863","l":"디오트 4-B-12"},{"n":"폼스튜디오","t":"2117-4366","l":"디오트 3-J-15"},{"n":"프로퍼","t":"2117-4155","l":"디오트 5-A-11"},{"n":"프레즐","t":"010-8698-5021","l":"디오트 3-I-26"},{"n":"프롬디","t":"010-5176-2871","l":"서울시 중구 신당동 다산로   29길 66번지 정우빌딩 3층"},{"n":"프릴","t":"010-5858-5646","l":"디오트 5-j1-j2"},{"n":"플라밍고","t":"2117-4048","l":"디오트 3-i-4"},{"n":"플라워웨이브","t":"2231-9182","l":"청평화 5-라-519"},{"n":"플로어","t":"2250-1157","l":"APM 1-57"},{"n":"플랜","t":"2117-8595","l":"디오트 3-B-30"},{"n":"플리즈","t":"010-6701-5806","l":"디오트 5-C-7"},{"n":"플러버","t":"2117-8252","l":"apm place B1-104"},{"n":"플러터","t":"2117-8336","l":"디오트 5-J-19"},{"n":"플레이마켓","t":"2117-4770","l":"디오트 4-J-5"},{"n":"플레인노트","t":"2117-4132","l":"디오트 4-B-28"},{"n":"플로우","t":"2117-4433","l":"디오트 B2-G-24"},{"n":"필모그래피","t":"2117-8457","l":"디오트 2-i-27"},{"n":"피크닉","t":"010-5844-9991","l":"디오트 1-D-9"},{"n":"피오니","t":"2117-4589","l":"디오트 B2-A-10"},{"n":"피버","t":"2117-4885","l":"디오트 4-D-9"},{"n":"하마","t":"2253-4630","l":"청평화 3-다-26"},{"n":"하라","t":"010-3047-2263","l":"디오트 1-B-4"},{"n":"하프","t":"2117-8610","l":"디오트 3-B-1호"},{"n":"하우디","t":"010-2822-4530","l":"디오트 4-D-10"},{"n":"하우","t":"2233-4403","l":"청평화 3-다-1~2호"},{"n":"하우룩글로벌","t":"2237-4403","l":"청평화 1-다-2A호"},{"n":"하루하","t":"02-2117-4036","l":"디오트 B1-L-3-1"},{"n":"허니허니","t":"2117-8563","l":"디오트 1-E-14호"},{"n":"해브","t":"2117-4079","l":"디오트 4-i-15-1"},{"n":"해시","t":"010-8585-3163","l":"신발상가 C동1층31호"},{"n":"허니비","t":"2252-5558","l":"청평화 4-D-48"},{"n":"허니콤","t":"2233-8898","l":"청평화 4-C-28"},{"n":"허쉬","t":"2117-8369","l":"디오트 2-H-6"},{"n":"허즈비","t":"2117-4100","l":"디오트 B2-D-16"},{"n":"헤브","t":"2117-4079","l":"디오트 4-i-15-1"},{"n":"헤르모드","t":"2117-8074","l":"디오트 B1-F-3"},{"n":"헤이무드","t":"010-7643-3597","l":"디오트 B1-J-2"},{"n":"헤이노크","t":"010-7110-0133","l":"디오트 3-F-2"},{"n":"헤이빌리","t":"2117-4974","l":"디오트 B1-A-15"},{"n":"헤이","t":"2117-8677","l":"디오트 3-A-24"},{"n":"헤일로","t":"010-2771-2241","l":"청평화 5-나-534"},{"n":"해크니","t":"2117-4884","l":"디오트 B1-L5-2"},{"n":"호시","t":"2117-8580","l":""}];
+
+// XLSX 라이브러리 로드 확인
+window.addEventListener('load', function() {
+  // 내장 거래처 + localStorage 저장분 함께 초기화
+  buildVendorMap(null);
+  updateVendorStatus();
+
+  if (typeof XLSX === 'undefined') {
+    // unpkg 실패 시 cdnjs fallback
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onerror = function() {
+      document.body.insertAdjacentHTML('afterbegin',
+        '<div style="background:#E85D5D;color:white;padding:12px 20px;font-size:13px;text-align:center;">' +
+        '⚠ 라이브러리 로드 실패 — 인터넷 연결을 확인하고 페이지를 새로고침(F5) 해주세요.</div>');
+    };
+    document.head.appendChild(s);
+  }
+});
+
+let stockWb = null, vendorWb = null, pendingVendorWb = null;
+let stockFileName = '';
+let outputWb = null;
+let vendorMap = {};
+
+const STEPS = [
+  {id:'s1', label:'1행 필터 + 상단 고정'},
+  {id:'s2', label:'F열 상품명 오름차순 정렬'},
+  {id:'s3', label:'마르셀 실키 반목 T 연파랑 처리'},
+  {id:'s4', label:'the J.Soo 품절 항목 추출 및 삭제'},
+  {id:'s5', label:'the J.Soo 나머지 행 삭제'},
+  {id:'s6', label:'KDG 연보라 처리'},
+  {id:'s7', label:'거래처 연락처/위치 자동 보완'},
+  {id:'s8', label:'마지막입고일 오늘 날짜 업데이트'},
+];
+
+const FILLS = {
+  lightBlue:   {patternType:'solid', fgColor:{rgb:'FFCCE5FF'}, bgColor:{indexed:64}},
+  lightPurple: {patternType:'solid', fgColor:{rgb:'FFE6CCFF'}, bgColor:{indexed:64}},
+  darkRed:     {patternType:'solid', fgColor:{rgb:'FFFF0000'}, bgColor:{indexed:64}},
+  none:        {patternType:'none'},
+};
+
+// ── Drag & Drop ──
+function onDrag(e, t) { e.preventDefault(); document.getElementById(t+'-drop').classList.add('drag-over'); }
+function offDrag(t) { document.getElementById(t+'-drop').classList.remove('drag-over'); }
+function onDrop(e, t) { e.preventDefault(); offDrag(t); if(e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0], t); }
+function handleFile(e, t) { if(e.target.files[0]) processFile(e.target.files[0], t); }
+
+function processFile(file, type) {
+  if (typeof XLSX === 'undefined') {
+    alert('라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.\n(인터넷 연결을 확인해주세요)');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'binary'});
+      if (type === 'stock') {
+        stockWb = wb; stockFileName = file.name;
+        document.getElementById('stock-name').textContent = '✓ ' + file.name;
+        document.getElementById('stock-drop').classList.add('has-file');
+        document.getElementById('stock-drop').classList.remove('drag-over');
+        document.getElementById('stock-main-text').textContent = file.name;
+        updateRunBtn();
+      }
+    } catch(err) {
+      console.error('stock file read error:', err);
+      alert('파일 읽기 오류: ' + (err.message || '알 수 없는 오류') + '\n\n.xlsx 파일인지 확인해주세요.');
+    }
+  };
+  reader.onerror = function() { alert('파일 읽기 실패. 다시 시도해주세요.'); };
+  reader.readAsBinaryString(file);
+}
+
+function updateRunBtn() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = !stockWb;
+  btn.textContent = stockWb ? '자동 처리 시작 →' : '파일을 먼저 업로드해주세요';
+}
+
+// ── Vendor popup ──
+function openVendorPopup() { document.getElementById('vendor-popup').classList.add('show'); }
+function closeVendorPopup() {
+  document.getElementById('vendor-popup').classList.remove('show');
+  pendingVendorWb = null;
+  resetVendorPopupUI();
+}
+function vendorOverlayClick(e) {
+  if (e.target === document.getElementById('vendor-popup')) closeVendorPopup();
+}
+
+function onDragPopup(e) {
+  e.preventDefault(); e.stopPropagation();
+  document.getElementById('vendor-drop-zone').style.borderColor = 'var(--primary)';
+  document.getElementById('vendor-drop-zone').style.background = 'var(--primary-light)';
+}
+function offDragPopup(e) {
+  document.getElementById('vendor-drop-zone').style.borderColor = 'var(--border)';
+  document.getElementById('vendor-drop-zone').style.background = 'var(--surface-2)';
+}
+function onDropPopup(e) {
+  e.preventDefault(); e.stopPropagation();
+  offDragPopup();
+  const file = e.dataTransfer.files[0];
+  if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+    handleVendorFileRaw(file);
+  } else if (file) {
+    alert('엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.');
+  }
+}
+function handleVendorFile(e) {
+  if (e.target.files[0]) handleVendorFileRaw(e.target.files[0]);
+  e.target.value = ''; // reset so same file can be re-selected
+}
+
+function handleVendorFileRaw(file) {
+  if (typeof XLSX === 'undefined') {
+    alert('라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.\n(인터넷 연결을 확인해주세요)');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      pendingVendorWb = XLSX.read(ev.target.result, {type:'binary'});
+      const fnEl = document.getElementById('vendor-filename');
+      fnEl.textContent = '✓ ' + file.name;
+      fnEl.style.display = 'block';
+      document.getElementById('vendor-drop-main').textContent = '파일이 선택되었습니다';
+      document.getElementById('vendor-drop-zone').style.borderColor = '#4CAF50';
+      document.getElementById('vendor-drop-zone').style.background = '#F0FFF2';
+      showVendorPreview(pendingVendorWb);
+    } catch(err) {
+      console.error('vendor file read error:', err);
+      alert('파일 읽기 오류: ' + (err.message || '알 수 없는 오류') + '\n\n.xlsx 또는 .xls 파일인지 확인해주세요.');
+    }
+  };
+  reader.onerror = function(e) { alert('파일 읽기 실패. 다시 시도해주세요.'); };
+  reader.readAsBinaryString(file);
+}
+
+function showVendorPreview(wb) {
+  const vws = wb.Sheets[wb.SheetNames[0]];
+  const vData = XLSX.utils.sheet_to_json(vws, {header:1, raw:false, defval:''});
+  const rows = vData.slice(1).filter(r => String(r[0]||'').trim());
+  const preview = document.getElementById('vendor-preview');
+  const listEl = document.getElementById('vendor-list-items');
+  document.getElementById('vendor-count').textContent = `총 ${rows.length}개 거래처 인식됨`;
+  listEl.innerHTML = rows.slice(0,10).map(r => `<div class="popup-vendor-item">${r[0]} ${r[1]?'· '+r[1]:''}</div>`).join('');
+  if (rows.length > 10) listEl.innerHTML += `<div class="popup-vendor-item" style="color:var(--text-hint)">... 외 ${rows.length-10}개</div>`;
+  preview.style.display = 'block';
+}
+
+function confirmVendor() {
+  if (!pendingVendorWb) { closeVendorPopup(); return; }
+  vendorWb = pendingVendorWb;
+  const extras = buildVendorMap(vendorWb);  // 내장 + 업로드 합치기
+  // localStorage에 추가분 저장 (다음 방문 시에도 유지)
+  try {
+    localStorage.setItem('jsoo_extra_vendors', JSON.stringify(extras));
+  } catch(e) {}
+  updateVendorStatus();
+  closeVendorPopup();
+}
+
+function buildVendorMap(wb) {
+  // 1) 기본 내장 데이터로 초기화
+  vendorMap = {};
+  BUILTIN_VENDORS.forEach(v => {
+    if (v.n && v.n.replace(/\\/g,'').trim()) vendorMap[v.n] = { tel: v.t, loc: v.l };
+  });
+
+  // 2) localStorage에 저장된 추가 거래처 불러오기
+  let savedExtras = [];
+  try {
+    const raw = localStorage.getItem('jsoo_extra_vendors');
+    if (raw) savedExtras = JSON.parse(raw);
+  } catch(e) {}
+  savedExtras.forEach(v => {
+    if (v.n) vendorMap[v.n] = { tel: v.tel, loc: v.loc };
+  });
+
+  // 3) 새로 업로드한 파일 파싱 & 반영
+  let extras = savedExtras.slice(); // 기존 저장분 유지
+  if (wb) {
+    const vws = wb.Sheets[wb.SheetNames[0]];
+    const vData = XLSX.utils.sheet_to_json(vws, {header:1, raw:false, defval:''});
+    const vHeader = vData[0] || [];
+    let vNameCol = 0, vTelCol = 1, vLocCol = 2;
+    vHeader.forEach((h, i) => {
+      const hs = String(h).toLowerCase().replace(/\s/g,'');
+      if (hs.includes('거래처') || hs.includes('공급처') || hs.includes('업체') || hs.includes('상호')) vNameCol = i;
+      if (hs.includes('연락처') || hs.includes('전화') || hs.includes('tel') || hs.includes('phone')) vTelCol = i;
+      if (hs.includes('위치') || hs.includes('주소') || hs.includes('호수') || hs.includes('location')) vLocCol = i;
+    });
+    vData.slice(1).forEach(vrow => {
+      const name = String(vrow[vNameCol]||'').trim();
+      const tel  = String(vrow[vTelCol]||'').trim();
+      const loc  = String(vrow[vLocCol]||'').trim();
+      if (!name || name.replace(/\\/g,'').trim() === '') return;
+      vendorMap[name] = { tel, loc };
+      // 내장에 없는 거래처만 extras에 추가 (저장 대상)
+      const isBuiltin = BUILTIN_VENDORS.some(b => b.n === name);
+      if (!isBuiltin) {
+        const idx = extras.findIndex(e => e.n === name);
+        if (idx >= 0) extras[idx] = { n:name, tel, loc };
+        else extras.push({ n:name, tel, loc });
+      }
+    });
+  }
+  return extras;
+}
+
+function updateVendorStatus() {
+  const count = Object.keys(vendorMap).length;
+  const dot = document.getElementById('vendor-dot');
+  const txt = document.getElementById('vendor-status-text');
+  dot.classList.add('loaded');
+  const builtinCount = BUILTIN_VENDORS.filter(v => v.n && v.n.replace(/\\/g,'').trim()).length;
+  const extraCount = count - builtinCount;
+  txt.textContent = extraCount > 0
+    ? `거래처 ${count}개 등록됨 (+${extraCount}개 추가)`
+    : `거래처 ${count}개 등록됨`;
+}
+
+function resetVendorPopupUI() {
+  const zone = document.getElementById('vendor-drop-zone');
+  if (zone) {
+    zone.style.borderColor = 'var(--border)';
+    zone.style.background = 'var(--surface-2)';
+  }
+  document.getElementById('vendor-drop-main').textContent = '여기에 파일을 드래그하거나';
+  const fnEl = document.getElementById('vendor-filename');
+  fnEl.textContent = '';
+  fnEl.style.display = 'none';
+  document.getElementById('vendor-preview').style.display = 'none';
+  document.getElementById('vendor-list-items').innerHTML = '';
+}
+
+// ── Rules accordion ──
+function toggleRules(btn) {
+  const body = document.getElementById('rules-body');
+  const arrow = document.getElementById('rules-arrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+// ── Fuzzy vendor match ──
+function normalize(str) {
+  return str.toLowerCase().replace(/[\s\(\)\[\]\.·\-_]/g,'').replace(/[^a-z0-9가-힣]/g,'');
+}
+function findVendor(name) {
+  const n = normalize(name);
+  if (!n) return null;
+  for (const [k, v] of Object.entries(vendorMap)) {
+    if (normalize(k) === n) return v;
+  }
+  for (const [k, v] of Object.entries(vendorMap)) {
+    const kn = normalize(k);
+    if (kn.length > 1 && (kn.includes(n) || n.includes(kn))) return v;
+  }
+  return null;
+}
+
+// ── MAIN RUN ──
+async function run() {
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('result-section').style.display = 'none';
+
+  const stepList = document.getElementById('step-list');
+  stepList.innerHTML = STEPS.map(s =>
+    `<div class="step-row" id="step-${s.id}"><span class="step-ic">○</span>${s.label}</div>`
+  ).join('');
+
+  await sleep(80);
+
+  const ws = stockWb.Sheets[stockWb.SheetNames[0]];
+  let data = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:''});
+  if (!data.length) return;
+
+  const header = data[0];
+  let rows = data.slice(1).filter(r => r.some(v => v !== ''));
+  let styles = rows.map(() => ({}));
+
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  const COL = {};
+  header.forEach((h,i) => { if(h) COL[h] = i; });
+  const F = COL['상품명'] ?? 5;
+  const G = COL['옵션내용'] ?? 6;
+  const O = COL['상품메모2'] ?? 14;
+  const B = COL['공급처명'] ?? 1;
+  const C = COL['공급처연락처'] ?? 2;
+  const D = COL['공급처위치'] ?? 3;
+  const A = COL['마지막입고일'] ?? 0;
+  const K = COL['바코드번호'] ?? 10;
+  const I = COL['부족수량'] ?? 8;
+  const E = COL['사입상품명'] ?? 4;
+  const Q = COL['품절여부'] ?? 16;
+
+  // S1
+  setStep('s1','running'); await sleep(100);
+  setStep('s1','done'); await sleep(60);
+
+  // S2: 정렬
+  setStep('s2','running'); await sleep(100);
+  rows.sort((a,b) => {
+    const fa = String(a[F]||''), fb = String(b[F]||'');
+    if(!fa&&!fb) return 0; if(!fa) return 1; if(!fb) return -1;
+    return fa.localeCompare(fb,'ko');
+  });
+  styles = rows.map(()=>({}));
+  setStep('s2','done'); await sleep(60);
+
+  // S3: 마르셀
+  setStep('s3','running'); await sleep(100);
+  let marcelItems = [];
+  rows.forEach((row, ri) => {
+    const f = String(row[F]||'');
+    if (f.includes('마르셀 실키 반목 T')) {
+      styles[ri]._fill = 'lightBlue';
+      marcelItems.push({name:f, opt:String(row[G]||'')});
+    }
+  });
+  setStep('s3','done'); await sleep(60);
+
+  // S4: J.Soo 품절 추출 & 삭제
+  setStep('s4','running'); await sleep(100);
+  let soldOutItems = [];
+  let keep = [], keepSt = [];
+  rows.forEach((row, ri) => {
+    const f = String(row[F]||'');
+    const o = String(row[O]||'');
+    const isJsoo = f.includes('the J.Soo');
+    const isSoldOut = (o.includes('품절')||o.includes('품절예정')) && !o.includes('진행');
+    if (isJsoo && isSoldOut) {
+      soldOutItems.push({name:f, opt:String(row[G]||'')});
+    } else {
+      keep.push(row); keepSt.push(styles[ri]);
+    }
+  });
+  rows = keep; styles = keepSt;
+  setStep('s4','done'); await sleep(60);
+
+  // S4-B: 사입 상품 품절 추출 & 삭제 (the J.Soo 미포함 + Q열(품절여부) = 품절)
+  let saipSoldOutItems = [];
+  let keep4b = [], keepSt4b = [];
+  rows.forEach((row, ri) => {
+    const f  = String(row[F]||'');
+    const q  = String(row[Q]||'').trim();
+    const isSaip    = !f.includes('the J.Soo');
+    const isSoldOut = q === '품절';
+    if (isSaip && isSoldOut) {
+      saipSoldOutItems.push({
+        name: f,
+        opt:  String(row[G]||'').trim(),
+        qty:  String(row[I]||'').trim() || '1',
+      });
+    } else {
+      keep4b.push(row); keepSt4b.push(styles[ri]);
+    }
+  });
+  rows = keep4b; styles = keepSt4b;
+
+  // S5: J.Soo 나머지 삭제
+  setStep('s5','running'); await sleep(100);
+  let keep2 = [], keepSt2 = [], deletedCount = 0;
+  rows.forEach((row, ri) => {
+    const f = String(row[F]||'');
+    if (f.includes('the J.Soo') && !f.includes('마르셀 실키 반목 T')) {
+      deletedCount++;
+    } else {
+      keep2.push(row); keepSt2.push(styles[ri]);
+    }
+  });
+  rows = keep2; styles = keepSt2;
+  setStep('s5','done'); await sleep(60);
+
+  // S6: KDG
+  setStep('s6','running'); await sleep(100);
+  let kdgItems = [];
+  rows.forEach((row, ri) => {
+    const b = String(row[B]||'');
+    if (b.includes('KDG')) {
+      styles[ri]._fill = 'lightPurple';
+      kdgItems.push({
+        supplier: b,
+        label:    (String(row[E]||'').trim() || String(row[F]||'').trim()) +
+                  (String(row[G]||'').trim() ? '/' + String(row[G]||'').trim() : ''),
+        qty:      String(row[I]||'').trim() || '1',
+      });
+    }
+  });
+  setStep('s6','done'); await sleep(60);
+
+  // S7: 거래처 보완
+  setStep('s7','running'); await sleep(100);
+  let missingVendors = [], filledCount = 0;
+  rows.forEach((row, ri) => {
+    const cEmpty = !String(row[C]||'').trim();
+    const dEmpty = !String(row[D]||'').trim();
+    if (cEmpty || dEmpty) {
+      const bName = String(row[B]||'').trim();
+      const found = Object.keys(vendorMap).length > 0 ? findVendor(bName) : null;
+      if (found) {
+        if (cEmpty && found.tel) { row[C] = found.tel; filledCount++; }
+        if (dEmpty && found.loc) { row[D] = found.loc; filledCount++; }
+      } else {
+        if (!missingVendors.includes(bName) && bName) missingVendors.push(bName);
+        if (!styles[ri]._fill) styles[ri]._fill = 'darkRed';
+      }
+    }
+  });
+  setStep('s7','done'); await sleep(60);
+
+  // S8: 날짜
+  setStep('s8','running'); await sleep(100);
+  rows.forEach(row => { row[A] = todayStr; });
+  setStep('s8','done'); await sleep(100);
+
+  // Build workbook
+  const newWs = {};
+  const maxCol = header.length;
+  header.forEach((v, ci) => {
+    const addr = XLSX.utils.encode_cell({r:0, c:ci});
+    newWs[addr] = { v, t:'s', s:{font:{bold:true}, fill:{patternType:'solid', fgColor:{rgb:'FF2D4A6E'}}, alignment:{horizontal:'center'}} };
+  });
+  rows.forEach((row, ri) => {
+    const fillKey = (styles[ri]||{})._fill;
+    const fill = fillKey ? FILLS[fillKey] : FILLS.none;
+    for (let ci = 0; ci < maxCol; ci++) {
+      const addr = XLSX.utils.encode_cell({r:ri+1, c:ci});
+      newWs[addr] = { v: row[ci] ?? '', t:'s', s:{fill} };
+    }
+  });
+  newWs['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:rows.length, c:maxCol-1}});
+  newWs['!autofilter'] = { ref: XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:0, c:maxCol-1}}) };
+  newWs['!freeze'] = { xSplit:0, ySplit:1 };
+  newWs['!cols'] = header.map((h,i) => {
+    if(i===0)return{wch:14}; if(i===5)return{wch:42}; if(i===6)return{wch:22};
+    if(i===1)return{wch:18}; if(i===2)return{wch:16}; if(i===3)return{wch:20};
+    return{wch:12};
+  });
+  outputWb = {SheetNames:['재고현황'], Sheets:{'재고현황':newWs}, Props:{Author:'더제이수'}};
+
+  await sleep(100);
+  document.getElementById('progress-wrap').style.display = 'none';
+
+  // ── 결과 표시 ──
+
+  // Summary
+  document.getElementById('summary-row').innerHTML = `
+    <div class="sum-tile"><div class="n">${rows.length}</div><div class="l">최종 데이터 행</div></div>
+    <div class="sum-tile"><div class="n">${soldOutItems.length}</div><div class="l">품절 제거</div></div>
+    <div class="sum-tile"><div class="n">${deletedCount}</div><div class="l">J.Soo 삭제</div></div>
+  `;
+
+  // 누락 거래처
+  const missingArea = document.getElementById('missing-area');
+  missingArea.innerHTML = '';
+  if (missingVendors.length > 0) {
+    missingVendors.forEach(v => {
+      missingArea.innerHTML += `<div class="missing-item">✗ ${v} — 직접 입력 필요</div>`;
+    });
+    const list = document.getElementById('missing-popup-list');
+    list.innerHTML = missingVendors.map(v=>`<li>${v}</li>`).join('');
+    document.getElementById('missing-popup').classList.add('show');
+  }
+
+  document.getElementById('result-section').style.display = 'block';
+
+  // 품절 사이드바
+  const soldoutDot = document.getElementById('soldout-dot');
+  const noticeEmpty = document.getElementById('notice-empty');
+  const soldoutItemsEl = document.getElementById('soldout-items');
+  const copyBtn = document.getElementById('copy-btn');
+  soldoutItemsEl.innerHTML = '';
+
+  if (soldOutItems.length > 0) {
+    soldoutDot.style.background = '#F5D800';
+    noticeEmpty.style.display = 'none';
+    copyBtn.style.display = 'inline-block';
+
+    const lines = ['** 제작 상품 품절 처리 해주세요! **', ''];
+    soldOutItems.forEach(item => {
+      soldoutItemsEl.innerHTML += `
+        <div class="notice-item">
+          <div class="notice-item-name">${item.name}</div>
+          ${item.opt ? `<div class="notice-item-opt">옵션: ${item.opt}</div>` : ''}
+        </div>`;
+      lines.push(item.opt ? `• ${item.name} / 옵션: ${item.opt}` : `• ${item.name}`);
+    });
+    document.getElementById('soldout-copy-text').textContent = lines.join('\n');
+  } else {
+    soldoutDot.style.background = '#69E06A';
+    noticeEmpty.textContent = '품절 항목 없음 ✓';
+    noticeEmpty.style.color = '#4A9A50';
+  }
+
+  // 사입 상품 품절 사이드바
+  const saipDot      = document.getElementById('saip-soldout-dot');
+  const saipEmpty    = document.getElementById('saip-notice-empty');
+  const saipItemsEl  = document.getElementById('saip-soldout-items');
+  const saipCopyBtn  = document.getElementById('saip-copy-btn');
+  saipItemsEl.innerHTML = '';
+
+  if (saipSoldOutItems.length > 0) {
+    saipDot.style.background = '#F5A623';
+    saipEmpty.style.display = 'none';
+    saipCopyBtn.style.display = 'inline-block';
+
+    const saipLines = ['** 사입 상품 품절 처리 해주세요! **', ''];
+    saipSoldOutItems.forEach(item => {
+      saipItemsEl.innerHTML += `
+        <div class="notice-item" style="border-color:#F5A623; background:rgba(245,166,35,0.1);">
+          <div class="notice-item-name" style="color:#5A3A00;">${item.name}</div>
+          ${item.opt ? `<div class="notice-item-opt" style="color:#8B6020;">옵션: ${item.opt}</div>` : ''}
+        </div>`;
+      saipLines.push(item.opt ? `• ${item.name} / 옵션: ${item.opt}` : `• ${item.name}`);
+    });
+    document.getElementById('saip-soldout-copy-text').textContent = saipLines.join('\n');
+  } else {
+    saipDot.style.background = '#69E06A';
+    saipEmpty.textContent = '사입 품절 항목 없음 ✓';
+    saipEmpty.style.color = '#4A9A50';
+  }
+  const alertsBody = document.getElementById('alerts-body');
+  let alertsHtml = '';
+  if (marcelItems.length > 0) {
+    alertsHtml += `<div class="alert-row blue">🔵 마르셀 실키 반목 T 포함<span class="alert-count">${marcelItems.length}행</span></div>`;
+    marcelItems.forEach(item => {
+      alertsHtml += `<div class="alert-detail" style="color:#1A4A7A;">${item.name}<br><span style="color:#5A7AAA;font-size:11px;">${item.opt||'-'}</span></div>`;
+    });
+  }
+  const kdgSuppliers = [...new Set(kdgItems.map(i => i.supplier))];
+  if (kdgSuppliers.length > 0) {
+    // 공급처별 발주 텍스트 생성
+    const kdgCopyLines = [];
+    kdgSuppliers.forEach(sup => {
+      const items = kdgItems.filter(i => i.supplier === sup);
+      kdgCopyLines.push(`[${sup} 발주]`);
+      items.forEach(item => {
+        kdgCopyLines.push(`${item.label} : ${item.qty}개`);
+      });
+    });
+    const kdgCopyText = kdgCopyLines.join('\n');
+
+    alertsHtml += `
+      <div class="alert-row purple" style="margin-top:${marcelItems.length>0?'12px':'0'}">
+        💜 KDG 발주 (카톡 필요)
+        <span class="alert-count">${kdgItems.length}행</span>
+        <button onclick="copyKdg()" id="kdg-copy-btn" style="
+          margin-left:8px; padding:4px 12px;
+          background:#4A2A8A; color:white; border:none;
+          border-radius:5px; font-size:11px; font-weight:500;
+          font-family:'Noto Sans KR',sans-serif; cursor:pointer;
+          flex-shrink:0; transition:background 0.15s;
+        ">📋 복사</button>
+      </div>
+      <div id="kdg-copy-data" style="display:none">${kdgCopyText.replace(/</g,'&lt;')}</div>`;
+
+    kdgSuppliers.forEach(sup => {
+      const items = kdgItems.filter(i => i.supplier === sup);
+      alertsHtml += `<div class="alert-detail" style="color:#6A3AAA;font-weight:500;margin-top:6px;">${sup}</div>`;
+      items.forEach(item => {
+        alertsHtml += `<div class="alert-detail" style="color:#4A2A8A;padding-top:2px;">
+          ${item.label} <span style="color:#9A7AAA;font-size:11px;">/ ${item.qty}개</span>
+        </div>`;
+      });
+    });
+  }
+  if (!alertsHtml) {
+    alertsHtml = '<div style="font-size:13px;color:var(--text-hint);text-align:center;padding:20px 0;">해당 항목 없음</div>';
+  }
+  alertsBody.innerHTML = alertsHtml;
+}
+
+function setStep(id, state) {
+  const el = document.getElementById('step-'+id);
+  if (!el) return;
+  el.className = 'step-row ' + state;
+  const icons = {done:'✓', running:'⏳', error:'✗'};
+  el.querySelector('.step-ic').textContent = icons[state] || '○';
+}
+
+function copySaipText() {
+  const text = document.getElementById('saip-soldout-copy-text').textContent;
+  if (!text) return;
+  const btn = document.getElementById('saip-copy-btn');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.innerHTML = '<span>✓</span> 복사됨!'; btn.style.background = '#4CAF50';
+    setTimeout(() => { btn.innerHTML = '<span>📋</span> 복사하기'; btn.style.background = '#8B5E00'; }, 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    btn.innerHTML = '<span>✓</span> 복사됨!'; btn.style.background = '#4CAF50';
+    setTimeout(() => { btn.innerHTML = '<span>📋</span> 복사하기'; btn.style.background = '#8B5E00'; }, 2000);
+  });
+}
+
+function copyKdg() {
+  const el = document.getElementById('kdg-copy-data');
+  if (!el) return;
+  const text = el.textContent;
+  const btn = document.getElementById('kdg-copy-btn');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ 복사됨'; btn.style.background = '#4CAF50';
+    setTimeout(() => { btn.textContent = '📋 복사'; btn.style.background = '#4A2A8A'; }, 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    btn.textContent = '✓ 복사됨'; btn.style.background = '#4CAF50';
+    setTimeout(() => { btn.textContent = '📋 복사'; btn.style.background = '#4A2A8A'; }, 2000);
+  });
+}
+
+function copyText() {
+  const text = document.getElementById('soldout-copy-text').textContent;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(onCopied).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    onCopied();
+  });
+}
+function onCopied() {
+  const btn = document.getElementById('copy-btn');
+  btn.innerHTML = '<span>✓</span> 복사됨!'; btn.classList.add('copied');
+  setTimeout(() => { btn.innerHTML = '<span>📋</span> 복사하기'; btn.classList.remove('copied'); }, 2000);
+}
+
+function downloadFile() {
+  if (!outputWb) return;
+  const base = stockFileName.replace(/\.[^.]+$/, '');
+  const today = new Date();
+  const ds = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+  XLSX.writeFile(outputWb, `${base}_발주서_${ds}.xlsx`, {bookType:'xlsx', type:'binary', cellStyles:true});
+}
+
+function closeMissingPopup() { document.getElementById('missing-popup').classList.remove('show'); }
+
+function resetAll() {
+  stockWb = null; outputWb = null; stockFileName = '';
+  document.getElementById('stock-file').value = '';
+  document.getElementById('stock-name').textContent = '';
+  document.getElementById('stock-drop').classList.remove('has-file');
+  document.getElementById('stock-main-text').textContent = '엑셀 파일을 드래그하거나 클릭해서 업로드';
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('result-section').style.display = 'none';
+  document.getElementById('notice-empty').textContent = '처리 후 품절 항목이 여기에 표시됩니다';
+  document.getElementById('notice-empty').style.color = '';
+  document.getElementById('notice-empty').style.display = 'block';
+  document.getElementById('soldout-items').innerHTML = '';
+  document.getElementById('soldout-dot').style.background = 'rgba(245,216,0,0.3)';
+  document.getElementById('copy-btn').style.display = 'none';
+  document.getElementById('copy-btn').innerHTML = '<span>📋</span> 복사하기';
+  document.getElementById('saip-soldout-dot').style.background = 'rgba(245,166,35,0.3)';
+  document.getElementById('saip-notice-empty').textContent = '처리 후 사입 품절 항목이 표시됩니다';
+  document.getElementById('saip-notice-empty').style.color = '';
+  document.getElementById('saip-notice-empty').style.display = 'block';
+  document.getElementById('saip-soldout-items').innerHTML = '';
+  document.getElementById('saip-copy-btn').style.display = 'none';
+  document.getElementById('saip-copy-btn').innerHTML = '<span>📋</span> 복사하기';
+  document.getElementById('alerts-body').innerHTML = '<div style="font-size:12px;color:var(--text-hint);text-align:center;padding:12px 0;">처리 후 확인 항목이 표시됩니다</div>';
+  document.getElementById('missing-area').innerHTML = '';
+  updateRunBtn();
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
