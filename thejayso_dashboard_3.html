@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>더제이수 자동화 프로그램</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --border: rgba(0,0,0,0.08);
+      --border-hover: rgba(0,0,0,0.18);
+      --text-primary: #1a1a1a;
+      --text-secondary: #6b6b6b;
+      --text-muted: #aaa;
+      --radius: 14px;
+      --shadow-hover: 0 6px 24px rgba(0,0,0,0.10);
+      --shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      color: var(--text-primary);
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2.5rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-title { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
+    .header-right { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+    main { max-width: 1040px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+
+    .section { margin-bottom: 2.5rem; }
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+      gap: 12px;
+    }
+
+    .btn-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 20px 20px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: default;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.18s, box-shadow 0.18s, transform 0.14s;
+      min-height: 90px;
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp 0.35s ease both;
+    }
+    .btn-card:nth-child(1) { animation-delay: 0.04s; }
+    .btn-card:nth-child(2) { animation-delay: 0.08s; }
+    .btn-card:nth-child(3) { animation-delay: 0.12s; }
+    .btn-card:nth-child(4) { animation-delay: 0.16s; }
+    .btn-card:nth-child(5) { animation-delay: 0.20s; }
+
+    .btn-card.linked { cursor: pointer; }
+    .btn-card.linked:hover {
+      border-color: var(--border-hover);
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+    }
+    .btn-card.linked:active { transform: scale(0.98); box-shadow: var(--shadow); }
+
+    .btn-card .icon { font-size: 24px; line-height: 1; }
+    .btn-card .label { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.35; }
+
+    .arrow {
+      position: absolute;
+      right: 16px;
+      top: 18px;
+      font-size: 13px;
+      color: var(--text-muted);
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity 0.16s, transform 0.16s;
+    }
+    .btn-card.linked:hover .arrow { opacity: 1; transform: translateX(0); }
+
+    .btn-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      border-radius: 14px 0 0 14px;
+    }
+    .cat-order::before  { background: #c8a97a; }
+    .cat-detail::before { background: #7ab5c8; }
+    .cat-sample::before { background: #8ec87a; }
+    .cat-stock::before  { background: #b57ac8; }
+    .cat-ops::before    { background: #c8c17a; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.75rem;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="header-title">더제이수 자동화 프로그램</span>
+  <span class="header-right" id="clock"></span>
+</header>
+
+<main>
+
+  <div class="section">
+    <div class="section-label">발주</div>
+    <div class="grid">
+      <a class="btn-card cat-order linked" href="https://idyllic-axolotl-aab518.netlify.app/" target="_blank">
+        <span class="icon">📋</span>
+        <span class="label">발주서</span>
+        <span class="arrow">→</span>
+      </a>
+      <a class="btn-card cat-order" href="#" onclick="return false">
+        <span class="icon">🏭</span>
+        <span class="label">제작 발주서</span>
+        <span class="arrow">→</span>
+      </a>
+      <a class="btn-card cat-order linked" href="https://warm-dusk-62a298.netlify.app/" target="_blank">
+        <span class="icon">💬</span>
+        <span class="label">거래처 발주 메시지 생성</span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">상세페이지</div>
+    <div class="grid">
+      <a class="btn-card cat-detail linked" href="https://warm-brioche-e8507a.netlify.app/" target="_blank">
+        <span class="icon">🛒</span>
+        <span class="label">카페24 상품 등록</span>
+        <span class="arrow">→</span>
+      </a>
+      <a class="btn-card cat-detail linked" href="https://stupendous-semolina-99d642.netlify.app/" target="_blank">
+        <span class="icon">📐</span>
+        <span class="label">카페24 사이즈 코드</span>
+        <span class="arrow">→</span>
+      </a>
+      <a class="btn-card cat-detail linked" href="https://shimmering-conkies-b23411.netlify.app/" target="_blank">
+        <span class="icon">🖼️</span>
+        <span class="label">카페24 상세페이지 코드</span>
+        <span class="arrow">→</span>
+      </a>
+      <a class="btn-card cat-detail linked" href="https://harmonious-cobbler-638008.netlify.app/" target="_blank">
+        <span class="icon">🖼️</span>
+        <span class="label">W컨셉 상세페이지 코드</span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">샘플</div>
+    <div class="grid">
+      <a class="btn-card cat-sample linked" href="https://splendorous-caramel-1c5521.netlify.app/" target="_blank">
+        <span class="icon">↩️</span>
+        <span class="label">샘플 반납</span>
+        <span class="arrow">→</span>
+      </a>
+      <a class="btn-card cat-sample linked" href="https://loquacious-faun-3b6dd6.netlify.app/" target="_blank">
+        <span class="icon">📤</span>
+        <span class="label">샘플 요청</span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">재고</div>
+    <div class="grid">
+      <a class="btn-card cat-stock" href="#" onclick="return false">
+        <span class="icon">🔄</span>
+        <span class="label">디홀릭 재고 업데이트</span>
+        <span class="arrow">→</span>
+      </a>
+      <a class="btn-card cat-stock" href="#" onclick="return false">
+        <span class="icon">🔄</span>
+        <span class="label">W컨셉 재고 업데이트</span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">물류</div>
+    <div class="grid">
+      <a class="btn-card cat-ops linked" href="https://resonant-entremet-2b18af.netlify.app/" target="_blank">
+        <span class="icon">📦</span>
+        <span class="label">물류 작업자 수량 확인</span>
+        <span class="arrow">→</span>
+      </a>
+      <a class="btn-card cat-ops linked" href="https://tubular-syrniki-dde743.netlify.app/" target="_blank">
+        <span class="icon">📊</span>
+        <span class="label">가입고 엑셀 생성기</span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">운영</div>
+    <div class="grid">
+      <a class="btn-card cat-ops" href="#" onclick="return false">
+        <span class="icon">💰</span>
+        <span class="label">근로자 급여 계산</span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+  </div>
+
+</main>
+
+<footer>© 2025 더제이수(THE J'SU) — 내부 자동화 도구</footer>
+
+<script>
+  function updateClock() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('clock').textContent =
+      now.getFullYear() + '.' + pad(now.getMonth()+1) + '.' + pad(now.getDate()) +
+      '  ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+</script>
+
+</body>
+</html>
