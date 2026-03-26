@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>더제이수 · 물류 입고처리</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#F4F5F7;--surface:#fff;--surface2:#F8F9FA;
+  --border:#E4E7EC;--border2:#D0D5DD;
+  --accent:#1D4ED8;--accent-light:#EFF6FF;
+  --pink:#DB2777;--pink-light:#FDF2F8;
+  --amber:#D97706;--amber-light:#FFFBEB;
+  --green:#16A34A;--green-light:#F0FDF4;
+  --text:#111827;--text2:#374151;--muted:#6B7280;--muted2:#9CA3AF;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08);--r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;min-height:100vh;padding-bottom:80px;}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm);}
+.header-logo{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),#7C3AED);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+.header-title{font-size:16px;font-weight:700;}
+.header-sub{font-size:12px;color:var(--muted);margin-top:1px;}
+.header-badge{margin-left:auto;background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;font-family:'DM Mono',monospace;}
+.main{max-width:1400px;margin:0 auto;padding:28px 24px 0;}
+.sec-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:var(--accent);color:#fff;border-radius:50%;font-size:12px;font-weight:700;margin-right:8px;}
+.sec-title{display:flex;align-items:center;font-size:14px;font-weight:700;color:var(--text2);margin-bottom:12px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;margin-bottom:14px;box-shadow:var(--shadow-sm);animation:fadeUp .4s ease both;}
+.card:nth-child(2){animation-delay:.05s;}.card:nth-child(3){animation-delay:.1s;}.card:nth-child(4){animation-delay:.15s;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.dropzone{border:2px dashed var(--border2);border-radius:10px;padding:40px 24px;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.dropzone:hover,.dropzone.drag{border-color:var(--accent);background:var(--accent-light);}
+.dz-icon{font-size:40px;margin-bottom:10px;transition:transform .3s;}
+.dropzone:hover .dz-icon{transform:scale(1.1);}
+.dz-text{font-size:14px;font-weight:500;color:var(--text2);margin-bottom:4px;}
+.dz-hint{font-size:12px;color:var(--muted2);}
+.dz-file{display:none;margin-top:10px;font-family:'DM Mono',monospace;font-size:12px;color:var(--green);background:var(--green-light);padding:5px 12px;border-radius:6px;}
+.dropzone.ok{border-color:var(--green);border-style:solid;background:var(--green-light);}
+.dropzone.ok .dz-file{display:inline-block;}.dropzone.ok .dz-hint{display:none;}
+.worker-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.w-box label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:7px;}
+.w-dot{width:8px;height:8px;border-radius:50%;}
+.d1{background:var(--accent);}.d2{background:var(--pink);}
+.w-box input{width:100%;border:1px solid var(--border2);border-radius:8px;padding:11px 13px;font-family:'Noto Sans KR',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s;}
+.w-box input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,78,216,.12);}
+.btn{width:100%;padding:15px;border:none;border-radius:10px;font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:all .2s;}
+.btn-run{background:linear-gradient(135deg,var(--accent),#4F46E5);color:#fff;box-shadow:0 4px 20px rgba(29,78,216,.3);}
+.btn-run:hover:not(:disabled){transform:translateY(-2px);}
+.btn-run:disabled{background:var(--border);color:var(--muted2);cursor:not-allowed;box-shadow:none;}
+.btn-dl{background:linear-gradient(135deg,var(--green),#15803D);color:#fff;box-shadow:0 4px 20px rgba(22,163,74,.25);}
+.btn-dl:hover{transform:translateY(-2px);}
+.progress-wrap{display:none;margin-top:14px;}
+.progress-label{font-size:12px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;}
+.progress-bar{height:6px;background:var(--border);border-radius:99px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),#7C3AED);border-radius:99px;width:0%;transition:width .5s ease;}
+.step-indicator{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.step-badge{font-size:11px;padding:3px 9px;border-radius:20px;font-family:'DM Mono',monospace;background:var(--border);color:var(--muted);transition:all .3s;}
+.step-badge.done{background:var(--green-light);color:var(--green);}
+.step-badge.active{background:var(--accent-light);color:var(--accent);animation:pulse .8s ease infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.result-card{display:none;background:var(--surface);border:1px solid var(--green);border-radius:var(--r);overflow:hidden;margin-bottom:14px;animation:fadeUp .4s ease both;}
+.result-header{background:var(--green-light);padding:16px 24px;border-bottom:1px solid #BBF7D0;}
+.result-header h3{font-size:14px;font-weight:700;color:var(--green);}
+.result-header p{font-size:12px;color:#166534;margin-top:2px;}
+.result-body{padding:20px 24px;}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;}
+.stat-box{border-radius:10px;padding:14px 12px;text-align:center;}
+.stat-box .s-name{font-size:11px;color:var(--muted);margin-bottom:6px;}
+.stat-box .s-val{font-family:'DM Mono',monospace;font-size:28px;font-weight:500;line-height:1;}
+.stat-box .s-sub{font-size:11px;color:var(--muted2);margin-top:4px;}
+.sb-blue{background:var(--accent-light)}.sb-blue .s-val{color:var(--accent)}
+.sb-pink{background:var(--pink-light)}.sb-pink .s-val{color:var(--pink)}
+.sb-amber{background:var(--amber-light)}.sb-amber .s-val{color:var(--amber)}
+.file-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px;}
+.chip{font-size:12px;padding:5px 11px;border-radius:8px;font-family:'DM Mono',monospace;}
+.chip-xl{background:var(--accent-light);color:var(--accent);}
+.chip-csv{background:var(--amber-light);color:var(--amber);}
+.log-header{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;margin-top:18px;}
+.log-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;max-height:200px;overflow-y:auto;}
+.log-row{display:flex;gap:10px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.log-row:last-child{border:none;}
+.log-step{font-family:'DM Mono',monospace;color:var(--accent);font-weight:500;min-width:40px;}
+.log-msg{color:var(--text2);}
+.error-box{display:none;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:14px 16px;font-size:13px;color:#DC2626;margin-top:12px;}
+
+/* ── 미리보기 ── */
+.preview-section{margin-top:20px;}
+.preview-tabs{display:flex;gap:6px;margin-bottom:0;}
+.preview-tab{padding:9px 20px;border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;cursor:pointer;background:var(--surface2);color:var(--muted);transition:all .2s;white-space:nowrap;}
+.preview-tab:hover{background:var(--accent-light);color:var(--accent);}
+.preview-tab.active{background:var(--surface);color:var(--accent);border-color:var(--accent);border-bottom:1px solid var(--surface);}
+.preview-tab.ts.active{color:var(--amber);border-color:var(--amber);}
+.preview-tab.ts:hover{background:var(--amber-light);color:var(--amber);}
+.preview-tab.t2.active{color:var(--pink);border-color:var(--pink);}
+.preview-tab.t2:hover{background:var(--pink-light);color:var(--pink);}
+.tab-cnt{display:inline-block;border-radius:20px;padding:1px 8px;font-size:10px;margin-left:6px;font-weight:700;}
+.preview-tab.active .tab-cnt{background:var(--accent-light);color:var(--accent);}
+.preview-tab.ts.active .tab-cnt{background:var(--amber-light);color:var(--amber);}
+.preview-tab.t2.active .tab-cnt{background:var(--pink-light);color:var(--pink);}
+.preview-tab .tab-cnt{background:var(--border);color:var(--muted);}
+.preview-panel{border:1px solid var(--border);border-radius:0 8px 8px 8px;background:var(--surface);overflow:hidden;}
+.preview-panel.hidden{display:none;}
+.preview-scroll{overflow-x:auto;overflow-y:auto;}
+.preview-tbl{width:100%;border-collapse:collapse;font-size:11.5px;font-family:'Noto Sans KR',sans-serif;}
+.preview-tbl th{background:#2F5496;color:#fff;padding:8px 12px;text-align:center;font-weight:700;position:sticky;top:0;z-index:2;white-space:nowrap;font-size:11px;}
+.preview-tbl th.left{text-align:left;}
+.preview-tbl td{padding:6px 12px;border-bottom:1px solid var(--border);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.preview-tbl td.left{text-align:left;}
+.preview-tbl td.right{text-align:right;font-family:'DM Mono',monospace;}
+.preview-tbl td.center{text-align:center;font-family:'DM Mono',monospace;}
+.preview-tbl tr.alt td{background:#F4F6FB;}
+.preview-tbl tr:hover td{background:#EBF0FF!important;}
+.preview-tbl tr:last-child td{border-bottom:none;}
+.preview-footer{padding:9px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;}
+.preview-footer strong{color:var(--text2);}
+@media(max-width:480px){.stat-grid{grid-template-columns:1fr 1fr;}.worker-grid{grid-template-columns:1fr;}.main{padding:20px 14px 0;}}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="header-logo">📦</div>
+  <div><div class="header-title">더제이수 물류 작업자별 분배</div><div class="header-sub">SBODWL → 작업자별 엑셀 자동 분배</div></div>
+  <div class="header-badge">v3.3</div>
+</header>
+<main class="main">
+  <div class="card">
+    <div class="sec-title"><span class="sec-num">1</span>파일 선택</div>
+    <div class="dropzone" id="drop">
+      <input type="file" id="fileInput" accept=".xlsx" onchange="onFile(this)">
+      <div class="dz-icon" id="dzIcon">📂</div>
+      <div class="dz-text">파일을 드래그하거나 클릭해서 선택</div>
+      <div class="dz-hint">SBODWL_*.xlsx 파일</div>
+      <div class="dz-file" id="dzFile"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="sec-title"><span class="sec-num">2</span>작업자 이름 설정</div>
+    <div class="worker-grid">
+      <div class="w-box">
+        <label><span class="w-dot d1"></span>작업자 1 · 먼저 처리 + 스팀 포함</label>
+        <input type="text" id="w1" value="이혜정" placeholder="이혜정">
+      </div>
+      <div class="w-box">
+        <label><span class="w-dot d2"></span>작업자 2 · 나머지</label>
+        <input type="text" id="w2" value="윤혜정" placeholder="윤혜정">
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="sec-title"><span class="sec-num">3</span>파일 생성</div>
+    <button class="btn btn-run" id="runBtn" onclick="run()" disabled>⚡ 파일 생성하기</button>
+    <div class="progress-wrap" id="progWrap">
+      <div class="progress-label"><span id="progLabel">처리 중...</span><span id="progPct">0%</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+      <div class="step-indicator" id="stepInd"></div>
+    </div>
+    <div class="error-box" id="errBox"></div>
+  </div>
+  <div class="result-card" id="resultCard">
+    <div class="result-header"><h3>✅ 처리 완료</h3><p id="resultSub"></p></div>
+    <div class="result-body">
+      <div class="stat-grid" id="statGrid"></div>
+      <div class="file-chips" id="fileChips"></div>
+      <button class="btn btn-dl" id="dlBtn">⬇️ &nbsp;ZIP 파일 다운로드</button>
+      <div class="log-header">처리 로그</div>
+      <div class="log-wrap" id="logWrap"></div>
+
+      <!-- 미리보기 -->
+      <div class="preview-section">
+        <div class="log-header" style="margin-top:20px;">결과 미리보기</div>
+        <div class="preview-tabs">
+          <div class="preview-tab active" id="tab1" onclick="switchTab(1)">
+            <span id="tab1name">이혜정</span><span class="tab-cnt" id="tab1cnt">0</span>
+          </div>
+          <div class="preview-tab ts" id="tabS" onclick="switchTab('S')">
+            🔥 스팀<span class="tab-cnt" id="tabScnt">0</span>
+          </div>
+          <div class="preview-tab t2" id="tab2" onclick="switchTab(2)">
+            <span id="tab2name">윤혜정</span><span class="tab-cnt" id="tab2cnt">0</span>
+          </div>
+        </div>
+        <div class="preview-panel" id="panel1">
+          <div class="preview-scroll" id="scroll1"><table class="preview-tbl" id="tbl1"></table></div>
+          <div class="preview-footer"><span id="footer1"></span><span id="footer1r" style="color:var(--muted2)"></span></div>
+        </div>
+        <div class="preview-panel hidden" id="panelS">
+          <div class="preview-scroll" id="scrollS"><table class="preview-tbl" id="tblS"></table></div>
+          <div class="preview-footer"><span id="footerS"></span><span id="footerSr" style="color:var(--muted2)"></span></div>
+        </div>
+        <div class="preview-panel hidden" id="panel2">
+          <div class="preview-scroll" id="scroll2"><table class="preview-tbl" id="tbl2"></table></div>
+          <div class="preview-footer"><span id="footer2"></span><span id="footer2r" style="color:var(--muted2)"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+let selFile=null,resultZip=null,zipName='output.zip';
+const logs=[];
+
+function todayStr(sep){
+  const d=new Date();
+  return `${d.getFullYear()}${sep}${String(d.getMonth()+1).padStart(2,'0')}${sep}${String(d.getDate()).padStart(2,'0')}`;
+}
+const STEPS=['로드','정렬/필터','스팀분리','수량합산','분배','엑셀생성','CSV','ZIP'];
+function setProgress(pct,label){
+  document.getElementById('progFill').style.width=pct+'%';
+  document.getElementById('progLabel').textContent=label;
+  document.getElementById('progPct').textContent=pct+'%';
+}
+function markStep(i,state){
+  const b=document.getElementById('stepInd').children[i];
+  if(b) b.className='step-badge '+state;
+}
+function pushLog(step,msg){logs.push({step,msg});}
+
+function onFile(inp){
+  if(!inp.files[0])return;
+  selFile=inp.files[0];
+  document.getElementById('drop').classList.add('ok');
+  document.getElementById('dzIcon').textContent='✅';
+  document.getElementById('dzFile').textContent=selFile.name;
+  document.getElementById('runBtn').disabled=false;
+}
+const drop=document.getElementById('drop');
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag');});
+drop.addEventListener('dragleave',()=>drop.classList.remove('drag'));
+drop.addEventListener('drop',e=>{
+  e.preventDefault();drop.classList.remove('drag');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.name.endsWith('.xlsx')){
+    selFile=f;
+    document.getElementById('drop').classList.add('ok');
+    document.getElementById('dzIcon').textContent='✅';
+    document.getElementById('dzFile').textContent=f.name;
+    document.getElementById('runBtn').disabled=false;
+  }
+});
+
+/* ══════════════════════════════════════════
+   엑셀 열 구성
+   A=장끼 B=공급처 C=사입명 D=상품명 E=옵션
+   F=입고수량 G=수량체크 H=메모 I=상품메모1
+
+   정보행:
+   B1=날짜  C1=날짜값  D1=작업자  E1=이름
+   B2=시작시간 C2=빈칸 D2=총갯수  E2=합계숫자(SUM수식+실제값)
+   B3=물건확인  C3=빈칸  D3=포장완료  E3=빈칸
+══════════════════════════════════════════ */
+const HEADERS=['장끼','공급처','사입명','상품명','옵션','입고수량','수량체크','메모','상품메모1'];
+const NCOLS=HEADERS.length;
+const INQ_IDX=HEADERS.indexOf('입고수량'); // 5 → F열
+const INQ_COL=String.fromCharCode(65+INQ_IDX); // 'F'
+const LEFT_COLS=new Set(['공급처','사입명','상품명','옵션','상품메모1','메모']);
+
+// 테두리 - thin 회색
+const BD={style:'thin',color:{argb:'FFBBBBBB'}};
+const BD_ALL={top:BD,bottom:BD,left:BD,right:BD};
+
+// 색상팔레트
+const C_LABEL ='FFD9E1F2'; // 하늘색 라벨
+const C_VALUE ='FFFFF2CC'; // 노란색 값칸
+const C_HEADER='FF2F5496'; // 진청색 헤더
+const C_WHITE ='FFFFFFFF';
+const C_BLACK ='FF000000';
+const C_HFONT ='FFFFFFFF'; // 헤더 흰글씨
+const C_ALT   ='FFEFEFEF'; // 교대 회색
+
+/**
+ * 셀 스타일 일괄 적용 (테두리 항상 포함)
+ */
+function S(cell, val, o={}){
+  if(val !== null && val !== undefined) cell.value = val;
+  cell.font      = {name:'Calibri', size:9, bold:!!o.bold, color:{argb: o.fg||C_BLACK}};
+  cell.alignment = {horizontal: o.ha||'center', vertical:'middle', wrapText:true};
+  cell.fill      = {type:'pattern', pattern:'solid', fgColor:{argb: o.bg||C_WHITE}};
+  cell.border    = BD_ALL; // ← 항상 적용
+}
+
+// Calibri 9pt 기준 정확한 글자 너비 (한글=2.2, 영문=1.1)
+function vlen(s){
+  return [...String(s)].reduce((a,c)=>{
+    if(/[\uAC00-\uD7A3\u4E00-\u9FFF\u3040-\u30FF]/.test(c)) return a+2.2;
+    return a+1.1;
+  },0);
+}
+function calcColWidths(allRows){
+  const mx=HEADERS.map(h=>vlen(h));
+  for(const row of allRows){
+    HEADERS.forEach((h,i)=>{
+      const v=row[h]??'';
+      if(v!=='') mx[i]=Math.max(mx[i],vlen(String(v)));
+    });
+  }
+  // 패딩 2 추가, 최소 6
+  // 열별 최대 너비 제한 (상품메모1은 내용 있을때만, 최대 40)
+  const MAX_WIDTHS = [6, 30, 25, 40, 18, 10, 10, 20, 40];
+  return mx.map((m,i)=>Math.min(Math.max(m+2, 6), MAX_WIDTHS[i]||40));
+}
+
+/* ══════════════════════════════════════════
+   시트 빌더
+══════════════════════════════════════════ */
+function buildSheet(wb, sheetName, nsRows, stmRows, worker, hasStream, colWidths){
+  const ws = wb.addWorksheet(sheetName);
+  ws.columns = HEADERS.map((h,i)=>({key:h, width:colWidths[i]}));
+
+  const DATA_START = 5;
+
+  // ── 1~3행 기본 초기화 (모든 셀 흰배경+테두리) ──
+  for(let r=1;r<=3;r++){
+    ws.getRow(r).height=20;
+    for(let c=1;c<=NCOLS;c++) S(ws.getCell(r,c),'',{bg:C_WHITE});
+  }
+
+  // 라벨 (하늘색+Bold)
+  [['B1','날짜'],['D1','작업자'],['B2','시작시간'],
+   ['D2','총갯수'],['B3','물건확인 완료 시간'],['D3','포장 완료 시간']]
+  .forEach(([a,t])=>S(ws.getCell(a),t,{bg:C_LABEL,bold:true}));
+
+  // 값칸 (노란색)
+  S(ws.getCell('C1'), todayStr('.'), {bg:C_VALUE});
+  S(ws.getCell('E1'), worker,        {bg:C_VALUE, bold:true});
+  S(ws.getCell('C2'), '',            {bg:C_VALUE});
+  S(ws.getCell('C3'), '',            {bg:C_VALUE});
+  S(ws.getCell('E3'), '',            {bg:C_VALUE});
+  // E2는 아래에서 합계 계산 후 설정
+
+  // ── 4행 헤더 (진청색+흰글씨) ──
+  ws.getRow(4).height=20;
+  HEADERS.forEach((h,ci)=>{
+    S(ws.getCell(4,ci+1), h, {fg:C_HFONT, bg:C_HEADER, bold:true});
+  });
+
+  // ── 5행~ 비스팀 데이터 ──
+  let toggle=false, prevSup=null, nsEndRow=DATA_START-1;
+  let nsQtySum=0;
+
+  nsRows.forEach((row,ri)=>{
+    const er=DATA_START+ri;
+    ws.getRow(er).height=16;
+    if(row['공급처']!==prevSup){toggle=!toggle; prevSup=row['공급처'];}
+    const bg=toggle?C_ALT:C_WHITE;
+    HEADERS.forEach((h,ci)=>{
+      const raw=row[h]??'';
+      const val=h==='입고수량'?(Number(raw)||0):String(raw);
+      S(ws.getCell(er,ci+1), val, {bg, ha:LEFT_COLS.has(h)?'left':'center'});
+    });
+    nsQtySum += Number(row['입고수량'])||0;
+    nsEndRow=er;
+  });
+
+  // ── E2: 총갯수 (SUM수식 + 실제값 result 직접 넣기) ──
+  // result:0 이면 엑셀이 0을 표시하므로 실제 합계값을 result에 넣어야 함!
+  ws.getCell('E2').value = {
+    formula: `SUM(${INQ_COL}${DATA_START}:${INQ_COL}${nsEndRow})`,
+    result:  nsQtySum   // ← 실제 계산값 직접 설정
+  };
+  S(ws.getCell('E2'), null, {bg:C_VALUE, bold:true});
+
+  // ── 구분 2행 + 스팀 ──
+  if(hasStream && stmRows.length>0){
+    const sep1=nsEndRow+1;
+    const sep2=nsEndRow+2;
+    const stmStart=sep2+1;
+    const stmEnd=stmStart+stmRows.length-1;
+
+    ws.getRow(sep1).height=8;
+    ws.getRow(sep2).height=18;
+
+    // 빈 구분행 (테두리 유지)
+    for(let c=1;c<=NCOLS;c++){
+      S(ws.getCell(sep1,c),'',{bg:C_WHITE});
+      S(ws.getCell(sep2,c),'',{bg:C_WHITE});
+    }
+    // 스팀 총갯수 라벨
+    S(ws.getCell(sep2,2),'스팀 총갯수',{bg:C_LABEL,bold:true,ha:'left'});
+
+    // 스팀 수량 합계 직접 계산
+    const stmQtySum = stmRows.reduce((a,r)=>a+(Number(r['입고수량'])||0),0);
+    ws.getCell(sep2,3).value = {
+      formula: `SUM(${INQ_COL}${stmStart}:${INQ_COL}${stmEnd})`,
+      result:  stmQtySum  // ← 실제값 직접 설정
+    };
+    S(ws.getCell(sep2,3), null, {bg:C_VALUE, bold:true});
+
+    // 스팀 데이터
+    toggle=false; prevSup=null;
+    stmRows.forEach((row,ri)=>{
+      const er=stmStart+ri;
+      ws.getRow(er).height=16;
+      if(row['공급처']!==prevSup){toggle=!toggle; prevSup=row['공급처'];}
+      const bg=toggle?C_ALT:C_WHITE;
+      HEADERS.forEach((h,ci)=>{
+        const raw=row[h]??'';
+        const val=h==='입고수량'?(Number(raw)||0):String(raw);
+        S(ws.getCell(er,ci+1), val, {bg, ha:LEFT_COLS.has(h)?'left':'center'});
+      });
+    });
+  }
+
+  // 틀 고정
+  ws.views=[{state:'frozen',xSplit:0,ySplit:4,activeCell:'A5'}];
+}
+
+/* ══════════════════════════════════════════
+   메인
+══════════════════════════════════════════ */
+async function run(){
+  if(!selFile)return;
+  const w1=document.getElementById('w1').value.trim()||'이혜정';
+  const w2=document.getElementById('w2').value.trim()||'윤혜정';
+  logs.length=0;
+  document.getElementById('runBtn').disabled=true;
+  document.getElementById('errBox').style.display='none';
+  document.getElementById('resultCard').style.display='none';
+  const si=document.getElementById('stepInd');
+  si.innerHTML=STEPS.map(s=>`<span class="step-badge">${s}</span>`).join('');
+  document.getElementById('progWrap').style.display='block';
+  setProgress(0,'파일 읽는 중...');
+
+  try{
+    // 0. 로드
+    markStep(0,'active');
+    const buf=await selFile.arrayBuffer();
+    const rawWb=XLSX.read(buf,{type:'array'});
+    const rawWs=rawWb.Sheets['입고내역'];
+    if(!rawWs) throw new Error('"입고내역" 시트를 찾을 수 없습니다.');
+    const raw=XLSX.utils.sheet_to_json(rawWs,{defval:''});
+    pushLog('0',`입고내역 로드: ${raw.length}행`);
+    markStep(0,'done'); setProgress(12,'필터링...');
+
+    // 1+2. 정렬/필터
+    markStep(1,'active');
+    let data=raw.map(r=>({
+      공급처:  String(r['공급처'] ||'').trim(),
+      사입명:  String(r['사입명'] ||'').trim(),
+      상품명:  String(r['상품명'] ||'').trim(),
+      옵션:    String(r['옵션']   ||'').trim(),
+      입고수량:parseFloat(r['입고수량'])||0,
+      바코드번호:r['바코드번호']??'',
+      상품메모1:String(r['상품메모1']||'').trim(),
+    }));
+    const before=data.length;
+    data=data.filter(r=>r.입고수량>0);
+    // 영문→한글 순서 (엑셀/파이썬과 동일하게 기본 유니코드 정렬)
+    data.sort((a,b)=>a.공급처<b.공급처?-1:a.공급처>b.공급처?1:0);
+    pushLog('1-2',`0/빈칸 ${before-data.length}건 제거 → ${data.length}행`);
+    markStep(1,'done'); setProgress(25,'스팀 분리...');
+
+    // 3. 스팀
+    markStep(2,'active');
+    const stmRaw=data.filter(r=>r.상품메모1.includes('스팀'));
+    const nsRaw =data.filter(r=>!r.상품메모1.includes('스팀'));
+    pushLog('3',`스팀 ${stmRaw.length}행 / 비스팀 ${nsRaw.length}행`);
+    markStep(2,'done'); setProgress(37,'수량 합산...');
+
+    // 15. 동일상품 합산
+    markStep(3,'active');
+    function mergeRows(rows){
+      const map=new Map();
+      for(const r of rows){
+        const key=`${r.공급처}||${r.사입명}||${r.상품명}||${r.옵션}||${r.상품메모1}`;
+        if(map.has(key)) map.get(key).입고수량+=r.입고수량;
+        else map.set(key,{...r});
+      }
+      return [...map.values()];
+    }
+    const ns =mergeRows(nsRaw);
+    const stm=mergeRows(stmRaw);
+    pushLog('15',`합산: 비스팀 ${nsRaw.length}→${ns.length}행 / 스팀 ${stmRaw.length}→${stm.length}행`);
+    markStep(3,'done'); setProgress(50,'분배...');
+
+    // 16~18. 이혜정/윤혜정 분배
+    markStep(4,'active');
+    const totalNs=ns.reduce((a,r)=>a+r.입고수량,0);
+    const target=totalNs/3;
+    let cumsum=0;
+    const w1rows=[],w2rows=[];
+    for(const row of ns){
+      const q=row.입고수량;
+      if(cumsum>=target){w2rows.push(row);}
+      else if(cumsum+q<=target){w1rows.push(row);cumsum+=q;}
+      else{w1rows.push(row);cumsum+=q;}
+    }
+    const w1qty=w1rows.reduce((a,r)=>a+r.입고수량,0);
+    const w2qty=w2rows.reduce((a,r)=>a+r.입고수량,0);
+    const stmQty=stm.reduce((a,r)=>a+r.입고수량,0);
+    pushLog('16-18',`${w1} 비스팀 ${w1qty}개(${w1rows.length}행) / ${w2} ${w2qty}개(${w2rows.length}행) / 스팀 ${stmQty}개`);
+    markStep(4,'done'); setProgress(62,'엑셀 생성...');
+
+    // 엑셀용 row 변환
+    function toSheet(rows){
+      return rows.map(r=>({
+        장끼:'',공급처:r.공급처,사입명:r.사입명,
+        상품명:r.상품명,옵션:r.옵션,입고수량:r.입고수량,
+        수량체크:'',메모:'',상품메모1:r.상품메모1
+      }));
+    }
+    const colWidths=calcColWidths([...toSheet(w1rows),...toSheet(w2rows),...toSheet(stm)]);
+
+    // 이혜정 xlsx
+    markStep(5,'active');
+    const wb1=new ExcelJS.Workbook();
+    wb1.creator='더제이수';
+    wb1.calcProperties={fullCalcOnLoad:true}; // 열릴때 자동 재계산
+    buildSheet(wb1,'입고내역',toSheet(w1rows),toSheet(stm),w1,true,colWidths);
+    const buf1=await wb1.xlsx.writeBuffer();
+
+    // 윤혜정 xlsx
+    const wb2=new ExcelJS.Workbook();
+    wb2.creator='더제이수';
+    wb2.calcProperties={fullCalcOnLoad:true};
+    buildSheet(wb2,'입고내역',toSheet(w2rows),[],w2,false,colWidths);
+    const buf2=await wb2.xlsx.writeBuffer();
+
+    pushLog('5',`xlsx 2개 생성 ✓ 총갯수 ${w1}=${w1qty} / ${w2}=${w2qty} / 스팀=${stmQty}`);
+    markStep(5,'done'); setProgress(80,'CSV...');
+
+    // CSV
+    markStep(6,'active');
+    function makeCSV(nsR,stmR=[]){
+      const lines=['\uFEFF바코드번호,입고수량'];
+      [...nsR,...stmR].forEach(r=>lines.push(`${r.바코드번호},${r.입고수량}`));
+      return lines.join('\r\n');
+    }
+    const todayFmt=todayStr('');
+    const csv1=makeCSV(w1rows,stmRaw);
+    const csv2=makeCSV(w2rows);
+    pushLog('6',`CSV: ${w1} ${w1rows.length+stmRaw.length}행 / ${w2} ${w2rows.length}행`);
+    markStep(6,'done'); setProgress(92,'ZIP...');
+
+    // ZIP
+    markStep(7,'active');
+    const zip=new JSZip();
+    zip.file(`${w1}_수량확인.xlsx`,buf1);
+    zip.file(`${w2}_수량확인.xlsx`,buf2);
+    zip.file(`${w1}_바코드출력_${todayFmt}.csv`,csv1);
+    zip.file(`${w2}_바코드출력_${todayFmt}.csv`,csv2);
+    const zipBlob=await zip.generateAsync({type:'blob',compression:'DEFLATE'});
+    resultZip=zipBlob; zipName=`입고처리_${todayFmt}.zip`;
+    pushLog('완료','ZIP 완성 · 총 4개 파일');
+    markStep(7,'done'); setProgress(100,'완료!');
+
+    // 결과 UI
+    document.getElementById('statGrid').innerHTML=`
+      <div class="stat-box sb-blue"><div class="s-name">${w1} (비스팀)</div><div class="s-val">${w1qty}</div><div class="s-sub">${w1rows.length}행</div></div>
+      <div class="stat-box sb-pink"><div class="s-name">${w2}</div><div class="s-val">${w2qty}</div><div class="s-sub">${w2rows.length}행</div></div>
+      <div class="stat-box sb-amber"><div class="s-name">스팀 (${w1})</div><div class="s-val">${stmQty}</div><div class="s-sub">${stm.length}행</div></div>`;
+    document.getElementById('fileChips').innerHTML=`
+      <span class="chip chip-xl">📊 ${w1}_수량확인.xlsx</span>
+      <span class="chip chip-xl">📊 ${w2}_수량확인.xlsx</span>
+      <span class="chip chip-csv">📄 ${w1}_바코드출력_${todayFmt}.csv</span>
+      <span class="chip chip-csv">📄 ${w2}_바코드출력_${todayFmt}.csv</span>`;
+    document.getElementById('logWrap').innerHTML=logs.map(l=>
+      `<div class="log-row"><span class="log-step">${l.step}</span><span class="log-msg">${l.msg}</span></div>`
+    ).join('');
+    document.getElementById('resultSub').textContent=`xlsx 2개 + csv 2개 · ${w1} ${w1qty}개 / ${w2} ${w2qty}개`;
+    document.getElementById('resultCard').style.display='block';
+
+    // 미리보기 렌더
+    renderPreview(w1, w2, w1rows, w2rows, stm);
+    switchTab(1);
+    window.addEventListener('resize', setPreviewHeight);
+
+    document.getElementById('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
+
+  }catch(err){
+    document.getElementById('errBox').style.display='block';
+    document.getElementById('errBox').textContent='오류: '+err.message;
+    setProgress(0,'오류 발생');
+    console.error(err);
+  }finally{
+    document.getElementById('runBtn').disabled=false;
+  }
+}
+
+/* ── 탭 전환 ── */
+function switchTab(n){
+  ['tab1','tabS','tab2'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  ['panel1','panelS','panel2'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  if(n===1){ document.getElementById('tab1').classList.add('active'); document.getElementById('panel1').classList.remove('hidden'); }
+  else if(n==='S'){ document.getElementById('tabS').classList.add('active'); document.getElementById('panelS').classList.remove('hidden'); }
+  else{ document.getElementById('tab2').classList.add('active'); document.getElementById('panel2').classList.remove('hidden'); }
+  // 패널 높이 자동 설정
+  setPreviewHeight();
+}
+
+function setPreviewHeight(){
+  // 화면 높이 기준 동적 높이 (화면 절반 이상)
+  const vh = window.innerHeight;
+  const h = Math.max(320, Math.floor(vh * 0.55)) + 'px';
+  ['scroll1','scrollS','scroll2'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.maxHeight = h;
+  });
+}
+
+/* ── 테이블 빌더 ── */
+function buildTable(tblId, rows, footerId, footerRId, label, color){
+  const COLS = ['공급처','사입명','상품명','옵션','입고수량','상품메모1'];
+  const HA   = {공급처:'left',사입명:'left',상품명:'left',옵션:'left',입고수량:'right',상품메모1:'left'};
+  const qty  = rows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
+
+  const tbl = document.getElementById(tblId);
+  let html = '<thead><tr>';
+  html += '<th style="width:32px;text-align:center">#</th>';
+  COLS.forEach(c=>{ html += `<th class="${HA[c]==='left'?'left':''}">${c}</th>`; });
+  html += '</tr></thead><tbody>';
+
+  let toggle=false, prevSup=null, num=1;
+  for(const row of rows){
+    if(row.공급처 !== prevSup){ toggle=!toggle; prevSup=row.공급처; }
+    const cls = toggle ? ' class="alt"' : '';
+    html += `<tr${cls}><td class="center" style="color:var(--muted2);font-size:10px">${num++}</td>`;
+    COLS.forEach(c=>{
+      const v = String(row[c]??'').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+      html += `<td class="${HA[c]||'left'}" title="${v}">${v||'<span style="color:var(--muted2)">-</span>'}</td>`;
+    });
+    html += '</tr>';
+  }
+  html += '</tbody>';
+  tbl.innerHTML = html;
+
+  const fd = document.getElementById(footerId);
+  const fr = document.getElementById(footerRId);
+  if(fd) fd.innerHTML = `<strong>${label}</strong> · ${rows.length}행 · 총 <strong style="color:${color}">${qty}개</strong>`;
+  if(fr) fr.textContent = rows.length > 15 ? `↕ ${rows.length}행 전체 (스크롤)` : `총 ${rows.length}행`;
+}
+
+/* ── 미리보기 전체 렌더 ── */
+function renderPreview(w1name, w2name, w1rows, w2rows, stmRows){
+  // 이름 업데이트
+  document.getElementById('tab1name').textContent = w1name;
+  document.getElementById('tab2name').textContent = w2name;
+
+  // 수량 뱃지
+  const w1qty = w1rows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
+  const w2qty = w2rows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
+  const stmQty = stmRows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
+  document.getElementById('tab1cnt').textContent = w1qty;
+  document.getElementById('tabScnt').textContent = stmQty;
+  document.getElementById('tab2cnt').textContent = w2qty;
+
+  // 테이블 빌드
+  buildTable('tbl1', w1rows, 'footer1', 'footer1r', w1name, 'var(--accent)');
+  buildTable('tblS', stmRows,'footerS', 'footerSr', '스팀',  'var(--amber)');
+  buildTable('tbl2', w2rows, 'footer2', 'footer2r', w2name, 'var(--pink)');
+
+  setPreviewHeight();
+}
+
+document.getElementById('dlBtn').addEventListener('click',()=>{
+  if(!resultZip)return;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(resultZip);
+  a.download=zipName; a.click();
+});
+</script>
+</body>
+</html>
