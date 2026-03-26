@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>가입고 엑셀 생성기</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #F5F3EF;
+    --surface: #FFFFFF;
+    --border: #E2DDD6;
+    --accent: #C8A882;
+    --accent-dark: #A8845C;
+    --text: #2C2825;
+    --text-muted: #8C8178;
+    --success: #5A8A6A;
+    --success-bg: #EDF4F0;
+    --error: #B05050;
+    --error-bg: #FDF0F0;
+    --tag-bg: #F0EBE3;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 80px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .brand {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+    margin-bottom: 12px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 300;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(44,40,37,0.06);
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    background: var(--bg);
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: #FAF7F3;
+  }
+
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-icon {
+    font-size: 40px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .drop-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+
+  .drop-hint {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .file-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--tag-bg);
+    border-radius: 10px;
+    margin-top: 16px;
+    display: none;
+  }
+
+  .file-info.show { display: flex; }
+
+  .file-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .file-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 20px;
+    display: none;
+  }
+
+  .stats-row.show { display: grid; }
+
+  .stat-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--accent-dark);
+    display: block;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    background: var(--accent-dark);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.02em;
+    margin-top: 20px;
+  }
+
+  .btn:hover { background: #8A6A44; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled {
+    background: var(--border);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-secondary {
+    background: white;
+    color: var(--accent-dark);
+    border: 1.5px solid var(--accent);
+    margin-top: 10px;
+  }
+
+  .btn-secondary:hover { background: var(--tag-bg); }
+
+  .alert {
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    margin-top: 16px;
+    display: none;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .alert.show { display: flex; }
+  .alert.success { background: var(--success-bg); color: var(--success); border: 1px solid #C8E0D0; }
+  .alert.error { background: var(--error-bg); color: var(--error); border: 1px solid #ECC8C8; }
+
+  .preview-table-wrap {
+    overflow-x: auto;
+    margin-top: 20px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: none;
+  }
+
+  .preview-table-wrap.show { display: block; }
+
+  .preview-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th {
+    background: var(--bg);
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    white-space: nowrap;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--success-bg);
+    color: var(--success);
+  }
+
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  footer {
+    margin-top: 40px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate { animation: fadeIn 0.3s ease forwards; }
+
+  .guide-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+    padding: 8px 18px;
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .guide-btn:hover { border-color: var(--accent); color: var(--accent-dark); }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(44,40,37,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+  .modal {
+    background: white;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 640px;
+    max-height: 88vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(44,40,37,0.2);
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 26px 16px;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-title { font-size: 16px; font-weight: 700; color: var(--text); }
+  .modal-close {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--bg); border: none; cursor: pointer;
+    font-size: 16px; color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .modal-close:hover { background: var(--border); }
+  .modal-body { padding: 22px 26px 26px; }
+  .g-step { display: flex; gap: 14px; margin-bottom: 26px; }
+  .g-step:last-child { margin-bottom: 0; }
+  .g-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--text); color: white;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .g-body { flex: 1; }
+  .g-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .g-desc { font-size: 13px; color: var(--text-muted); line-height: 1.65; margin-bottom: 8px; }
+  .path-pill {
+    display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 12px;
+    font-size: 12px; color: var(--text);
+  }
+  .path-pill .sep { color: var(--text-muted); }
+  .path-pill .last { color: #1D6FD9; font-weight: 600; }
+  .g-screen { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 8px; }
+  .g-screen-bar { background: #1a3a5c; padding: 7px 12px; display: flex; align-items: center; gap: 6px; }
+  .g-screen-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.25); }
+  .g-screen-url { font-size: 11px; color: rgba(255,255,255,0.5); font-family: 'DM Mono', monospace; }
+  .g-screen-body { padding: 14px; background: var(--bg); }
+  .mock-dl-btn { background: var(--text); color: white; border-radius: 8px; padding: 10px; text-align: center; font-size: 13px; font-weight: 600; margin-top: 10px; }
+  .g-notice { background: #FFF8E1; border: 1px solid #F5CC5A; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #7A5800; line-height: 1.7; margin-top: 8px; }
+  .g-notice b { color: #c0392b; }
+  .g-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .g-table th { background: var(--bg); padding: 8px 12px; text-align: left; color: var(--text-muted); border-bottom: 1px solid var(--border); font-weight: 600; font-size: 11px; }
+  .g-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); font-size: 12px; }
+  .g-table tr:last-child td { border-bottom: none; }
+  .req { background: #FEE; color: #C0392B; border: 1px solid #F5C6CB; border-radius: 4px; padding: 1px 7px; font-size: 11px; font-weight: 600; }
+  .g-tip { background: #EBF3FD; border: 1px solid #B5D4F4; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #185FA5; line-height: 1.65; margin-top: 8px; }
+  .g-upload-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .g-lbl { font-size: 12px; color: var(--text-muted); width: 80px; flex-shrink: 0; }
+  .g-inp { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 12px; color: var(--text); background: white; }
+  .g-inp.hi { border-color: #1D6FD9; }
+  .g-upload-btn { background: #1a3a5c; color: white; border-radius: 8px; padding: 9px; text-align: center; font-size: 13px; font-weight: 600; }
+  .g-divider { height: 1px; background: var(--border); margin: 18px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📦 가입고 엑셀 생성기</h1>
+  <p class="subtitle">엑셀에서 입고수량 + 바코드번호만 추출합니다.</p>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:14px;">
+    <button class="guide-btn" style="width:260px;justify-content:center;" onclick="document.getElementById('smartbizModal').classList.add('open')">📥 스마트비즈 파일 다운로드 방법</button>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:0;">버튼을 클릭하면 스마트비즈에서 엑셀 다운로드 메뉴얼을 확인할 수 있어요</p>
+    <button class="guide-btn" style="width:260px;justify-content:center;" onclick="document.getElementById('guideModal').classList.add('open')" >📖 셀메이트 업로드 방법</button>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:0;">버튼을 클릭하면 셀메이트 업로드 메뉴얼을 확인할 수 있어요</p>
+  </div>
+</header>
+
+<div class="card">
+  <div class="section-title">파일 업로드</div>
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".xlsx,.xls" />
+    <span class="drop-icon">📂</span>
+    <div class="drop-title">엑셀 파일을 여기에 끌어다 놓거나 클릭하세요</div>
+    <div class="drop-hint">.xlsx / .xls 파일만 가능 · SBODWL 발주 파일 형식</div>
+  </div>
+
+  <div class="file-info" id="fileInfo">
+    <span class="file-icon">📄</span>
+    <div>
+      <div class="file-name" id="fileName">—</div>
+      <div class="file-meta" id="fileMeta">—</div>
+    </div>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-box">
+      <span class="stat-num" id="statTotal">0</span>
+      <div class="stat-label">전체 행</div>
+    </div>
+    <div class="stat-box">
+      <span class="stat-num" id="statKept">0</span>
+      <div class="stat-label">입고 있음</div>
+    </div>
+    <div class="stat-box">
+      <span class="stat-num" id="statRemoved">0</span>
+      <div class="stat-label">제거된 행</div>
+    </div>
+  </div>
+
+  <div class="alert" id="alertBox"></div>
+</div>
+
+<div class="card" id="previewCard" style="display:none;">
+  <div class="section-title">미리보기 <span style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:4px;">(상위 10행)</span></div>
+  <div class="preview-table-wrap show" id="previewWrap">
+    <table id="previewTable"></table>
+  </div>
+
+  <button class="btn" id="downloadBtn" onclick="downloadFile()">⬇ CSV 다운로드</button>
+  <button class="btn btn-secondary" onclick="resetAll()">↩ 다른 파일 처리하기</button>
+</div>
+
+<footer>the J.Soo 내부 전용 · 외부 공유 금지</footer>
+
+<script>
+let processedData = null;
+let originalFileName = '';
+
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.getElementById('dropZone');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+});
+
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) processFile(e.target.files[0]);
+});
+
+function showAlert(type, msg) {
+  const box = document.getElementById('alertBox');
+  box.className = `alert show ${type} animate`;
+  box.innerHTML = (type === 'success' ? '✅ ' : '❌ ') + msg;
+}
+
+function processFile(file) {
+  originalFileName = file.name;
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileMeta').textContent = (file.size / 1024).toFixed(1) + ' KB';
+  document.getElementById('fileInfo').classList.add('show');
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      if (raw.length < 2) { showAlert('error', '데이터가 없거나 형식이 맞지 않습니다.'); return; }
+
+      const header = raw[0];
+      // Find 입고수량(col 11) and 바코드번호(col 19) by name
+      let inboundIdx = -1, barcodeIdx = -1;
+      header.forEach((h, i) => {
+        if (String(h).trim() === '입고수량') inboundIdx = i;
+        if (String(h).trim() === '바코드번호') barcodeIdx = i;
+      });
+
+      if (inboundIdx === -1 || barcodeIdx === -1) {
+        showAlert('error', `필요한 컬럼을 찾지 못했습니다. (입고수량: ${inboundIdx !== -1 ? '✓' : '✗'}, 바코드번호: ${barcodeIdx !== -1 ? '✓' : '✗'})`);
+        return;
+      }
+
+      const dataRows = raw.slice(1);
+      const total = dataRows.length;
+
+      // Filter: 입고수량 > 0 and not empty
+      const kept = dataRows.filter(row => {
+        const val = row[inboundIdx];
+        if (val === '' || val === null || val === undefined) return false;
+        const num = Number(val);
+        return !isNaN(num) && num > 0;
+      });
+
+      const removed = total - kept.length;
+
+      // Build output: only 바코드번호 and 입고수량
+      const outHeader = ['바코드번호', '입고수량'];
+      const outRows = kept.map(row => [row[barcodeIdx], row[inboundIdx]]);
+
+      processedData = [outHeader, ...outRows];
+
+      // Update stats
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statKept').textContent = kept.length;
+      document.getElementById('statRemoved').textContent = removed;
+      document.getElementById('statsRow').classList.add('show');
+
+      // Preview
+      buildPreview(processedData);
+      document.getElementById('previewCard').style.display = 'block';
+      document.getElementById('previewCard').classList.add('animate');
+      showAlert('success', `처리 완료! ${kept.length}건의 입고 데이터를 추출했습니다.`);
+
+    } catch (err) {
+      showAlert('error', '파일을 읽는 중 오류가 발생했습니다: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function buildPreview(data) {
+  const preview = data.slice(0, 11); // header + 10 rows
+  const table = document.getElementById('previewTable');
+  table.innerHTML = '';
+
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  preview[0].forEach(h => {
+    const th = document.createElement('th');
+    th.textContent = h;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  preview.slice(1).forEach(row => {
+    const tr = document.createElement('tr');
+    row.forEach((cell, i) => {
+      const td = document.createElement('td');
+      if (i === 1) {
+        td.innerHTML = `<span class="badge">${cell}</span>`;
+      } else {
+        td.textContent = cell;
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+}
+
+function downloadFile() {
+  if (!processedData) return;
+
+  // Plain CSV with header: no quotes, comma separator, CRLF line endings
+  const csvContent = processedData.map(row =>
+    row.map(cell => String(cell).trim()).join(',')
+  ).join('\r\n');
+
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `입고수량_${dateStr}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function resetAll() {
+  processedData = null;
+  originalFileName = '';
+  fileInput.value = '';
+  document.getElementById('fileInfo').classList.remove('show');
+  document.getElementById('statsRow').classList.remove('show');
+  document.getElementById('alertBox').className = 'alert';
+  document.getElementById('previewCard').style.display = 'none';
+  document.getElementById('previewTable').innerHTML = '';
+}
+</script>
+
+
+<!-- SmartBiz Guide Modal -->
+<div class="modal-overlay" id="smartbizModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📥 스마트비즈 파일 다운로드 방법</div>
+      <button class="modal-close" onclick="document.getElementById('smartbizModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="g-step">
+        <div class="g-num">1</div>
+        <div class="g-body">
+          <div class="g-title">스마트비즈 로그인</div>
+          <div class="g-desc">아래 버튼을 클릭해 스마트비즈에 접속 후 로그인하세요.</div>
+          <a href="https://smart-biz.co.kr/main.php" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#0E7FC0;color:white;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;text-decoration:none;margin-top:4px;">
+            🔗 스마트비즈 바로가기
+          </a>
+        </div>
+      </div>
+
+      <div class="g-divider"></div>
+
+      <div class="g-step">
+        <div class="g-num">2</div>
+        <div class="g-body">
+          <div class="g-title">주문내역 메뉴 이동</div>
+          <div class="g-desc">로그인 후 상단 메뉴에서 주문내역으로 이동하세요.</div>
+          <div class="path-pill">
+            주문관리
+            <span class="sep">›</span>
+            <span class="last">주문내역</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="g-divider"></div>
+
+      <div class="g-step">
+        <div class="g-num">3</div>
+        <div class="g-body">
+          <div class="g-title">주문목록에서 최신 날짜 클릭</div>
+          <div class="g-desc">주문내역 클릭 시 아래와 같은 주문목록 화면이 나옵니다. <b style="color:var(--text);">가장 위에 있는 최신 날짜</b>(파란색 링크)를 클릭하세요.</div>
+          <div class="g-screen">
+            <div class="g-screen-bar">
+              <div class="g-screen-dot"></div>
+              <div class="g-screen-url">smart-biz.co.kr · 주문내역 / 주문목록</div>
+            </div>
+            <div class="g-screen-body" style="background:white;padding:12px;">
+              <div style="font-size:13px;font-weight:700;color:#222;margin-bottom:10px;">주문목록</div>
+              <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                  <thead>
+                    <tr style="background:#f5f5f5;">
+                      <th style="padding:6px 8px;border:1px solid #e0e0e0;color:#555;font-weight:600;white-space:nowrap;">주문일자</th>
+                      <th style="padding:6px 8px;border:1px solid #e0e0e0;color:#1096D0;font-weight:600;" colspan="2">일반주문</th>
+                      <th style="padding:6px 8px;border:1px solid #e0e0e0;color:#E74C3C;font-weight:600;" colspan="2">미송주문</th>
+                      <th style="padding:6px 8px;border:1px solid #e0e0e0;color:#555;font-weight:600;" colspan="2">합계</th>
+                      <th style="padding:6px 8px;border:1px solid #e0e0e0;color:#555;font-weight:600;">상태</th>
+                    </tr>
+                    <tr style="background:#f5f5f5;">
+                      <th style="padding:4px 8px;border:1px solid #e0e0e0;color:#888;font-weight:500;"></th>
+                      <th style="padding:4px 8px;border:1px solid #e0e0e0;color:#888;font-weight:500;">주문수</th>
+                      <th style="padding:4px 8px;border:1px solid #e0e0e0;color:#888;font-weight:500;">출고수</th>
+                      <th style="padding:4px 8px;border:1px solid #e0e0e0;color:#888;font-weight:500;">주문수</th>
+                      <th style="padding:4px 8px;border:1px solid #e0e0e0;color:#888;font-weight:500;">출고수</th>
+                      <th style="padding:4px 8px;border:1px solid #e0e0e0;color:#888;font-weight:500;">주문수</th>
+                      <th style="padding:4px 8px;border:1px solid #e0e0e0;color:#888;font-weight:500;">출고수</th>
+                      <th style="padding:4px 8px;border:1px solid #e0e0e0;color:#888;font-weight:500;"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="background:#fffbe6;">
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;"><span style="color:#1096D0;font-weight:700;text-decoration:underline;">2026-03-25</span> <span style="background:#E74C3C;color:white;border-radius:3px;padding:1px 5px;font-size:10px;margin-left:4px;">최신</span></td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;">54</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;color:#E74C3C;font-weight:600;">37</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;">55</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;color:#E74C3C;font-weight:600;">6</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;">1,621</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;color:#E74C3C;font-weight:600;">272</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;color:#1096D0;font-weight:600;">입고대기</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;color:#1096D0;text-decoration:underline;">2026-03-24</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;">58</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;color:#E74C3C;">30</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;">65</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;color:#E74C3C;">11</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;">1,555</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;color:#E74C3C;">243</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;color:#888;">주문완료</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;color:#1096D0;text-decoration:underline;">2026-03-23</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;">70</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;color:#E74C3C;">34</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;">74</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;color:#E74C3C;">13</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;">1,748</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;color:#E74C3C;">219</td>
+                      <td style="padding:6px 8px;border:1px solid #e0e0e0;text-align:center;color:#888;">주문완료</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="margin-top:8px;border:2px dashed #1096D0;border-radius:6px;padding:7px 12px;font-size:11px;color:#1096D0;text-align:center;font-weight:600;">
+                ⬆ 가장 위 날짜(파란색) 클릭!
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="g-divider"></div>
+
+      <div class="g-step">
+        <div class="g-num">4</div>
+        <div class="g-body">
+          <div class="g-title">주문내역 화면 확인</div>
+          <div class="g-desc">날짜를 클릭하면 아래와 같은 상세 주문내역 화면이 나옵니다.</div>
+          <div class="g-screen">
+            <div class="g-screen-bar">
+              <div class="g-screen-dot"></div>
+              <div class="g-screen-url">smart-biz.co.kr · 주문내역 상세</div>
+            </div>
+            <div class="g-screen-body" style="background:white;padding:12px;">
+              <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:8px;">
+                <div style="background:#27AE60;color:white;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;">입고처리(엑셀)</div>
+              </div>
+              <div style="border:2px dashed #27AE60;border-radius:6px;padding:7px 12px;font-size:11px;color:#27AE60;text-align:center;font-weight:600;">
+                ⬆ 입고처리(엑셀) 클릭!
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="g-divider"></div>
+
+      <div class="g-step">
+        <div class="g-num">6</div>
+        <div class="g-body">
+          <div class="g-title">입고처리(엑셀) 클릭 → 팝업 설정</div>
+          <div class="g-desc">화면 우측 상단의 <b style="color:#E74C3C;">입고처리(엑셀)</b> 버튼을 클릭하면 아래 팝업이 뜹니다.</div>
+          <div class="g-screen">
+            <div class="g-screen-bar">
+              <div class="g-screen-dot"></div>
+              <div class="g-screen-url">smart-biz.co.kr · 입고처리 팝업</div>
+            </div>
+            <div class="g-screen-body" style="background:white;">
+              <div style="background:#1096D0;color:white;border-radius:6px 6px 0 0;padding:10px 16px;font-size:14px;font-weight:700;margin:-14px -14px 14px -14px;">입고처리</div>
+              <div style="font-size:12px;color:#555;margin-bottom:14px;">엑셀 다운로드 후 입고내역을 작성하고 다시 업로드 하세요.</div>
+              <div style="background:#f8f8f8;border-radius:8px;padding:12px 14px;margin-bottom:10px;">
+                <div style="font-size:12px;font-weight:700;color:#222;margin-bottom:10px;">주문내역 엑셀파일 다운로드</div>
+                <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#888;">
+                    <span style="width:14px;height:14px;border-radius:50%;border:2px solid #ccc;display:inline-block;"></span> 전체
+                  </label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#1096D0;font-weight:600;">
+                    <span style="width:14px;height:14px;border-radius:50%;border:2px solid #1096D0;background:#1096D0;display:inline-block;"></span> 출고있는 업체제외
+                  </label>
+                </div>
+                <div style="background:#27AE60;color:white;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;display:inline-block;">엑셀다운로드</div>
+              </div>
+              <div style="border:2px dashed #27AE60;border-radius:8px;padding:8px 12px;font-size:11px;color:#27AE60;text-align:center;font-weight:600;">
+                ✓ "출고있는 업체제외" 선택 후 엑셀다운로드 클릭!
+              </div>
+            </div>
+          </div>
+          <div class="g-notice">
+            ⚠ 다운로드된 파일이 <b>SBODWL_날짜.xlsx</b> 형식인지 확인하세요. 이 파일을 가입고 엑셀 생성기에 업로드하면 됩니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="g-divider"></div>
+
+      <div class="g-step">
+        <div class="g-num">7</div>
+        <div class="g-body">
+          <div class="g-title">가입고 엑셀 생성기에 업로드</div>
+          <div class="g-desc">다운로드한 SBODWL 엑셀 파일을 아래 링크에서 업로드하세요.</div>
+          <a href="https://sparkling-malabi-aa10a0.netlify.app/" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#A8845C;color:white;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;text-decoration:none;margin-top:4px;margin-bottom:8px;">
+            🔗 가입고 엑셀 생성기 바로가기
+          </a>
+          <div class="g-tip">
+            💡 업로드 후 CSV 다운로드 → 셀메이트 업로드 순서로 진행하세요.<br>셀메이트 업로드 방법은 📖 셀메이트 업로드 방법 버튼을 참고하세요.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Guide Modal -->
+<div class="modal-overlay" id="guideModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📖 셀메이트 업로드 방법</div>
+      <button class="modal-close" onclick="document.getElementById('guideModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="g-step">
+        <div class="g-num">1</div>
+        <div class="g-body">
+          <div class="g-title">CSV 다운로드</div>
+          <div class="g-desc">발주 엑셀을 업로드하면 바코드번호 + 입고수량만 추출된 CSV가 생성됩니다. 아래 버튼으로 다운로드하세요.</div>
+          <div class="g-screen">
+            <div class="g-screen-bar">
+              <div class="g-screen-dot"></div>
+              <div class="g-screen-url">sparkling-malabi-aa10a0.netlify.app</div>
+            </div>
+            <div class="g-screen-body">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+                <div style="background:white;border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
+                  <div style="font-size:15px;font-weight:700;color:var(--accent-dark);">163</div>
+                  <div style="font-size:11px;color:var(--text-muted);">전체 행</div>
+                </div>
+                <div style="background:white;border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
+                  <div style="font-size:15px;font-weight:700;color:var(--accent-dark);">48</div>
+                  <div style="font-size:11px;color:var(--text-muted);">입고 있음</div>
+                </div>
+                <div style="background:white;border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
+                  <div style="font-size:15px;font-weight:700;color:var(--accent-dark);">115</div>
+                  <div style="font-size:11px;color:var(--text-muted);">제거된 행</div>
+                </div>
+              </div>
+              <div class="mock-dl-btn">⬇ CSV 다운로드</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="g-divider"></div>
+
+      <div class="g-step">
+        <div class="g-num">2</div>
+        <div class="g-body">
+          <div class="g-title">셀메이트 메뉴 이동</div>
+          <div class="g-desc">아래 버튼을 클릭해 셀메이트에 접속 후 로그인하세요.</div>
+          <a href="https://thejsoo.sellmate.co.kr/login/login_prototype.asp" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#1a3a5c;color:white;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;text-decoration:none;margin-top:4px;margin-bottom:12px;">
+            🔗 셀메이트 바로가기
+          </a>
+          <div class="g-title" style="margin-top:12px;">메뉴 이동</div>
+          <div class="g-desc">로그인 후 아래 경로로 이동하세요.</div>
+          <div class="path-pill">
+            재고관리
+            <span class="sep">›</span>
+            상품 입출고
+            <span class="sep">›</span>
+            상품 입고
+            <span class="sep">›</span>
+            <span class="last">CSV 입고</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="g-divider"></div>
+
+      <div class="g-step">
+        <div class="g-num">3</div>
+        <div class="g-body">
+          <div class="g-title">파일 업로드</div>
+          <div class="g-desc">파일 선택 후 엑셀 파일 업로드 버튼을 클릭하세요.</div>
+          <div class="g-screen">
+            <div class="g-screen-body" style="background:white;">
+              <div class="g-upload-row">
+                <div class="g-lbl">입고용 엑셀파일</div>
+                <div style="display:flex;gap:6px;flex:1;align-items:center;">
+                  <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--text-muted);white-space:nowrap;">파일 선택</div>
+                  <div class="g-inp hi">입고수량_20260326.csv</div>
+                </div>
+              </div>
+              <div style="font-size:11px;color:#c0392b;margin-bottom:10px;padding-left:88px;">반드시 CSV(쉼표로 분리) (*.csv) 확장자여야 합니다.</div>
+              <div class="g-upload-btn">▲ 엑셀 파일 업로드</div>
+            </div>
+          </div>
+          <div class="g-tip">
+            💡 생성기에서 다운로드한 파일은 헤더(바코드번호, 입고수량)가 자동 설정되어 있어 별도 수정 없이 바로 업로드 가능합니다.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
