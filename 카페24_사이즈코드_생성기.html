@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>카페24 사이즈 코드 생성기</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif; background: #f4f4f2; color: #1a1a1a; min-height: 100vh; }
+
+.header { background: #1e1e1e; color: #fff; padding: 18px 28px; display: flex; align-items: center; gap: 14px; }
+.header h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+.header p { font-size: 12px; color: #999; margin-top: 2px; }
+.header-icon { width: 34px; height: 34px; background: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+.layout { display: flex; height: calc(100vh - 72px); }
+
+.sidebar { width: 190px; background: #fff; border-right: 1px solid #e8e8e6; padding: 14px 0; flex-shrink: 0; overflow-y: auto; }
+.sidebar-section { padding: 0 0 6px; margin-top: 10px; }
+.sidebar-section:first-child { margin-top: 0; }
+.sidebar-label { font-size: 10px; font-weight: 700; color: #bbb; letter-spacing: 0.8px; text-transform: uppercase; padding: 0 16px 6px; }
+.cloth-btn { display: block; width: 100%; padding: 9px 16px; font-size: 13.5px; font-family: inherit; text-align: left; background: none; border: none; cursor: pointer; color: #555; border-left: 3px solid transparent; transition: all 0.12s; }
+.cloth-btn:hover { background: #f7f7f5; color: #1a1a1a; }
+.cloth-btn.active { background: #f0f0ee; color: #1a1a1a; font-weight: 700; border-left-color: #1e1e1e; }
+.sidebar-divider { height: 1px; background: #f0f0ee; margin: 8px 16px; }
+
+.main { flex: 1; overflow-y: auto; padding: 24px 28px; display: flex; gap: 24px; min-width: 0; }
+
+.input-panel { flex: 1; min-width: 0; }
+.panel-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.panel-title .tag { font-size: 11px; font-weight: 500; background: #1e1e1e; color: #fff; border-radius: 4px; padding: 2px 8px; }
+
+.section-card { background: #fff; border-radius: 12px; border: 1px solid #e8e8e6; overflow: hidden; margin-bottom: 14px; }
+.section-card-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f7f7f5; border-bottom: 1px solid #e8e8e6; }
+.section-card-title { font-size: 13px; font-weight: 700; color: #333; display: flex; align-items: center; gap: 8px; }
+.section-badge { font-size: 10px; font-weight: 500; background: #e8e8e6; color: #777; border-radius: 10px; padding: 2px 8px; }
+.section-badge.extra { background: #e8f0fd; color: #3a6fd8; }
+.btn-remove-section { font-size: 12px; color: #bbb; background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-family: inherit; transition: all 0.12s; }
+.btn-remove-section:hover { color: #e55; background: #fff0f0; }
+
+.size-table { width: 100%; border-collapse: collapse; }
+.size-table th { background: #fafaf8; font-size: 11px; font-weight: 600; color: #888; padding: 8px 6px; text-align: center; border-bottom: 1px solid #f0f0ee; white-space: nowrap; }
+.size-table th.col-num { width: 28px; color: #ccc; font-weight: 400; }
+.size-table th.col-size { width: 70px; color: #555; }
+.size-table td { padding: 5px 4px; border-bottom: 1px solid #f7f7f5; }
+.size-table tr:last-child td { border-bottom: none; }
+.size-table input { width: 100%; padding: 6px 6px; font-size: 12.5px; font-family: inherit; border: 1px solid #e8e8e6; border-radius: 6px; text-align: center; background: #fafaf8; outline: none; transition: border-color 0.12s, background 0.12s; }
+.size-table input:focus { border-color: #1e1e1e; background: #fff; }
+.size-table input.inp-size { font-weight: 700; }
+.row-num { font-size: 11px; color: #ccc; text-align: center; }
+
+.custom-cols-row { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid #f0f0ee; background: #fffef5; align-items: center; }
+.custom-cols-row span { font-size: 12px; color: #888; }
+.custom-cols-row input { width: 78px; padding: 5px 7px; font-size: 12px; border: 1px solid #e0e0dd; border-radius: 6px; font-family: inherit; outline: none; }
+.custom-cols-row input:focus { border-color: #1e1e1e; }
+
+.add-section-area { margin-bottom: 14px; }
+.add-section-area-title { font-size: 12px; font-weight: 600; color: #888; margin-bottom: 8px; }
+.add-section-btns { display: flex; flex-wrap: wrap; gap: 7px; }
+.btn-add-section { padding: 7px 14px; font-size: 12px; font-family: inherit; font-weight: 500; border: 1.5px dashed #c8c8c4; border-radius: 8px; background: #fff; color: #777; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
+.btn-add-section:hover { border-color: #1e1e1e; color: #1e1e1e; background: #f7f7f5; }
+.btn-add-section:disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+
+.btn-row { display: flex; gap: 10px; margin-bottom: 8px; }
+.btn-generate { flex: 1; padding: 12px; font-size: 14px; font-weight: 700; font-family: inherit; background: #1e1e1e; color: #fff; border: none; border-radius: 10px; cursor: pointer; transition: all 0.15s; }
+.btn-generate:hover { background: #333; }
+.btn-generate:active { transform: scale(0.98); }
+.btn-clear { padding: 12px 18px; font-size: 13px; font-family: inherit; background: #fff; color: #888; border: 1px solid #e0e0dd; border-radius: 10px; cursor: pointer; transition: all 0.15s; }
+.btn-clear:hover { border-color: #bbb; color: #555; }
+.hint { font-size: 11.5px; color: #bbb; line-height: 1.7; }
+
+.output-panel { width: 360px; flex-shrink: 0; }
+.output-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.output-title { font-size: 15px; font-weight: 700; }
+.output-btns { display: flex; gap: 7px; }
+.copy-btn, .preview-btn { display: flex; align-items: center; gap: 5px; padding: 7px 13px; font-size: 12.5px; font-weight: 600; font-family: inherit; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+.copy-btn { background: #1e1e1e; color: #fff; border: none; }
+.copy-btn:hover { background: #333; }
+.copy-btn.copied { background: #16a34a; }
+.copy-btn:disabled, .preview-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+.preview-btn { background: #fff; color: #1e1e1e; border: 1.5px solid #1e1e1e; }
+.preview-btn:hover { background: #f4f4f2; }
+
+.code-wrap { background: #fff; border-radius: 12px; border: 1px solid #e8e8e6; overflow: hidden; }
+.code-box { padding: 14px; font-size: 10.5px; font-family: "Courier New", monospace; white-space: pre-wrap; word-break: break-all; color: #555; line-height: 1.65; height: calc(100vh - 185px); overflow-y: auto; display: none; }
+.code-placeholder { color: #ccc; font-size: 13px; height: calc(100vh - 185px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: #fff; border-radius: 16px; width: 680px; max-width: 94vw; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.22); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid #e8e8e6; flex-shrink: 0; }
+.modal-title { font-size: 14px; font-weight: 700; }
+.modal-close { width: 30px; height: 30px; border-radius: 7px; border: none; background: #f4f4f2; cursor: pointer; font-size: 17px; color: #666; display: flex; align-items: center; justify-content: center; transition: background 0.12s; }
+.modal-close:hover { background: #e8e8e6; }
+.modal-body { padding: 24px; overflow-y: auto; }
+
+/* 카페24 사이즈표 스타일 재현 - 세로형 */
+.modal-body .sizetable { display: block; font-family: inherit; }
+.modal-body .sizetable ul { display: inline-flex; flex-direction: column; list-style: none; border: 1px solid #ccc; margin-bottom: 12px; }
+.modal-body .sizetable ul + ul { margin-left: -1px; }
+.modal-body .sizetable ul li { padding: 7px 14px; font-size: 13px; border-bottom: 1px solid #e0e0e0; text-align: center; min-width: 70px; background: #fff; white-space: nowrap; }
+.modal-body .sizetable ul li:last-child { border-bottom: none; }
+.modal-body .sizetable ul.sizetable_header { background: #f5f5f5; }
+.modal-body .sizetable ul.sizetable_header li { background: #f5f5f5; font-weight: 700; font-size: 12px; color: #333; min-width: 80px; }
+.modal-body .sizetable ul:not(.sizetable_header) li:first-child { font-weight: 700; background: #fafafa; }
+.modal-body .sizetable > ul { display: block; }
+/* 핵심: ul들을 가로로 붙이되 전체 sizetable은 block */
+.modal-body .sizetable { display: block; }
+.modal-body .sizetable ul { display: inline-flex; vertical-align: top; }
+.modal-body .sizetable_notice { font-size: 12px; color: #888; line-height: 1.8; margin-top: 10px; display: block; }
+.modal-body .sizetable_subtitle { font-size: 13px; font-weight: 700; color: #333; margin-top: 16px; margin-bottom: 6px; display: block; }
+.modal-body .sizetable_model { font-size: 12px; color: #666; margin-top: 6px; line-height: 1.8; display: block; }
+.modal-body .sizelink { display: inline-block; margin-top: 8px; font-size: 12px; color: #555; text-decoration: underline; }
+.modal-body table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+      <rect x="2" y="2" width="7" height="7" rx="1.5" fill="#1e1e1e"/>
+      <rect x="11" y="2" width="7" height="7" rx="1.5" fill="#1e1e1e"/>
+      <rect x="2" y="11" width="7" height="7" rx="1.5" fill="#1e1e1e"/>
+      <rect x="11" y="11" width="7" height="7" rx="1.5" fill="#ccc"/>
+    </svg>
+  </div>
+  <div>
+    <h1>카페24 사이즈 코드 생성기</h1>
+    <p>의류 타입 선택 → 사이즈 입력 → 코드 복사</p>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">의류</div>
+      <button class="cloth-btn active" data-type="상의">상의</button>
+      <button class="cloth-btn" data-type="바지">바지</button>
+      <button class="cloth-btn" data-type="스커트">스커트</button>
+      <button class="cloth-btn" data-type="원피스">원피스</button>
+      <button class="cloth-btn" data-type="아우터">아우터</button>
+      <button class="cloth-btn" data-type="상의(슬리브리스)">상의(슬리브리스)</button>
+      <button class="cloth-btn" data-type="셋업(바지)">셋업(바지)</button>
+      <button class="cloth-btn" data-type="셋업(스커트)">셋업(스커트)</button>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">액세서리</div>
+      <button class="cloth-btn" data-type="신발">신발</button>
+      <button class="cloth-btn" data-type="벨트">벨트</button>
+      <button class="cloth-btn" data-type="스카프/머플러">스카프/머플러</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="input-panel">
+      <div class="panel-title">
+        <span id="panel-type-label">상의</span>
+        <span class="tag" id="panel-col-count"></span>
+      </div>
+
+      <div class="section-card" id="main-section-card">
+        <div class="section-card-header">
+          <div class="section-card-title">
+            <span id="main-section-name">기본 사이즈</span>
+            <span class="section-badge">기본</span>
+          </div>
+        </div>
+        <table class="size-table" id="size-table"></table>
+      </div>
+
+      <div id="extra-sections-wrap"></div>
+      <div class="add-section-area" id="add-section-area"></div>
+
+      <div class="btn-row">
+        <button class="btn-generate" onclick="generate()">✓ 코드 생성</button>
+        <button class="btn-clear" onclick="clearAll()">초기화</button>
+      </div>
+      <div class="hint">· 사이즈명이 비어있는 행은 무시됩니다 &nbsp;·&nbsp; 빈 수치는 자동으로 <b>-</b> 처리</div>
+    </div>
+
+    <div class="output-panel">
+      <div class="output-header">
+        <div class="output-title">생성된 코드</div>
+        <div class="output-btns">
+          <button class="preview-btn" id="preview-btn" onclick="openPreview()" disabled>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+            미리보기
+          </button>
+          <button class="copy-btn" id="copy-btn" onclick="copyCode()" disabled>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 11H2.5A1.5 1.5 0 011 9.5v-7A1.5 1.5 0 012.5 1h7A1.5 1.5 0 0111 2.5V3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>코드 복사</span>
+          </button>
+        </div>
+      </div>
+      <div class="code-wrap">
+        <div class="code-placeholder" id="code-placeholder">
+          <svg width="36" height="36" viewBox="0 0 40 40" fill="none"><rect x="6" y="10" width="28" height="4" rx="2" fill="#ccc"/><rect x="6" y="18" width="20" height="4" rx="2" fill="#ccc"/><rect x="6" y="26" width="24" height="4" rx="2" fill="#ccc"/></svg>
+          <span>사이즈를 입력하고<br>코드 생성을 눌러주세요</span>
+        </div>
+        <pre class="code-box" id="code-output"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closePreview()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">미리보기</div>
+      <button class="modal-close" onclick="closePreview()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const TYPES = {
+  '상의':            { cols: ['어깨','가슴','암홀','팔길이','소매','밑단','총길이'],            modelSize: 'FREE' },
+  '바지':            { cols: ['허리','힙','밑위','허벅지','밑단','총길이'],                    modelSize: 'S' },
+  '스커트':          { cols: ['허리','힙','밑단','총길이'],                                    modelSize: 'S' },
+  '원피스':          { cols: ['어깨','가슴','암홀','팔길이','소매','허리','힙','밑단','총길이'], modelSize: 'S' },
+  '아우터':          { cols: ['어깨','가슴','암홀','팔길이','소매','허리','밑단','총길이'],      modelSize: 'FREE' },
+  '상의(슬리브리스)': { cols: ['어깨','가슴','암홀','밑단','총길이'],                           modelSize: 'FREE' },
+  '셋업(바지)':      { cols: ['어깨','가슴','암홀','팔길이','소매','밑단','총길이'],            modelSize: 'FREE', isSetup: true,
+                       setupExtra: { key: '바지', cols: ['허리','힙','밑위','허벅지','밑단','총길이'] } },
+  '셋업(스커트)':    { cols: ['어깨','가슴','암홀','팔길이','소매','밑단','총길이'],            modelSize: 'FREE', isSetup: true,
+                       setupExtra: { key: '스커트', cols: ['허리','힙','밑단','총길이'] } },
+  '신발':            { cols: ['굽','총높이'],   modelSize: 'FREE', isAccessory: true },
+  '벨트':            { cols: ['폭','총길이'],   modelSize: 'FREE', isAccessory: true },
+  '스카프/머플러':   { cols: ['가로','세로'],   modelSize: 'FREE', isAccessory: true },
+};
+
+const EXTRA_OPTIONS = [
+  { key: '벨트',    cols: ['폭','총길이'] },
+  { key: '스카프',  cols: ['가로','세로'] },
+  { key: '머플러',  cols: ['가로','세로'] },
+  { key: '직접입력', cols: [] },
+];
+
+const CLOTH_TYPES = ['상의','바지','스커트','원피스','아우터','상의(슬리브리스)','셋업(바지)','셋업(스커트)'];
+const NUM_ROWS = 4;
+let currentType = '상의';
+let generatedCode = '';
+let extraSections = [];
+let extraIdCounter = 0;
+
+const TEMPLATES = {"상의":{"before":"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n\t<tbody>\n\t\t<tr>\n\t\t\t<td style=\"padding:5px;\">\n\t\t\t\t<div class=\"sizetable list5\">\n\t\t\t\t\t<!--\n    [가이드]\n    - 가로 열 수에 맞게 \"list5\"에서 숫자를 변경하세요.\n    - 옵션 수에 따라 사이즈 데이터 <ul>...</ul> 그룹을 반복 추가하세요.\n    -->\n\t\t\t\t\t<!-- 사이즈 항목명 -->\n\t\t\t\t\t<ul class=\"sizetable_header\">\n\t\t\t\t\t\t<li>SIZE(CM)</li>\n\t\t\t\t\t\t<li>어깨</li>\n\t\t\t\t\t\t<li>가슴</li>\n\t\t\t\t\t\t<li>암홀</li>\n\t\t\t\t\t\t<li>팔길이</li>\n\t\t\t\t\t\t<li>소매</li>\n\t\t\t\t\t\t<li>밑단</li>\n\t\t\t\t\t\t<li>총길이</li>\n\t\t\t\t\t</ul>\n\t\t\t\t\t<!-- 사이즈 데이터 -->","rest":"<!-- 사이즈 측정 안내 -->\n\t\t\t\t\t<div class=\"sizetable_notice\">\n\t\t\t\t\t\t사이즈 측정은 상품을 바닥에 놓고 단면을 측정한 것이며,\n\t\t\t\t\t\t<br> 측정 방법, 수축력 소재(니트류)에 따라 1~3cm 오차가 있을 수 있습니다.\n\t\t\t\t\t</div>\n\t\t\t\t\t<!-- 모델 정보 -->\n\t\t\t\t\t<div class=\"sizetable_model\">\n\t\t\t\t\t\tSUYOUN : FREE 사이즈 착용 (163cm, 상의 55size, 하의 26inch, 신발 230mm)\n\t\t\t\t\t\t<br>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</td>\n\t\t</tr>\n\t</tbody>\n</table><a class=\"sizelink\" href=\"/article/notice/1/4/\">&#62;&#62; 사이즈 측정 방법 보러가기</a>"},"상의(슬리브리스)":{"before":"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n\t<tbody>\n\t\t<tr>\n\t\t\t<td style=\"padding:5px;\">\n\t\t\t\t<div class=\"sizetable list5\">\n\t\t\t\t\t<!--\n    [가이드]\n    - 가로 열 수에 맞게 \"list5\"에서 숫자를 변경하세요.\n    - 옵션 수에 따라 사이즈 데이터 <ul>...</ul> 그룹을 반복 추가하세요.\n    -->\n\t\t\t\t\t<!-- 사이즈 항목명 -->\n\t\t\t\t\t<ul class=\"sizetable_header\">\n\t\t\t\t\t\t<li>SIZE(CM)</li>\n\t\t\t\t\t\t<li>어깨</li>\n\t\t\t\t\t\t<li>가슴</li>\n\t\t\t\t\t\t<li>암홀</li>\n\t\t\t\t\t\t<li>밑단</li>\n\t\t\t\t\t\t<li>총길이</li>\n\t\t\t\t\t</ul>\n\t\t\t\t\t<!-- 사이즈 데이터 -->","rest":"<!-- 사이즈 측정 안내 -->\n\t\t\t\t\t<div class=\"sizetable_notice\">\n\t\t\t\t\t\t사이즈 측정은 상품을 바닥에 놓고 단면을 측정한 것이며,\n\t\t\t\t\t\t<br> 측정 방법, 수축력 소재(니트류)에 따라 1~3cm 오차가 있을 수 있습니다.\n\t\t\t\t\t</div>\n\t\t\t\t\t<!-- 모델 정보 -->\n\t\t\t\t\t<div class=\"sizetable_model\">\n\t\t\t\t\t\tSUYOUN : FREE 사이즈 착용 (163cm, 상의 55size, 하의 26inch, 신발 230mm)\n\t\t\t\t\t\t<br>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</td>\n\t\t</tr>\n\t</tbody>\n</table><a class=\"sizelink\" href=\"/article/notice/1/4/\">&#62;&#62; 사이즈 측정 방법 보러가기</a>"},"바지":{"before":"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n\t<tbody>\n\t\t<tr>\n\t\t\t<td style=\"padding:5px;\">\n\t\t\t\t<div class=\"sizetable list5\">\n\t\t\t\t\t<!--\n    [가이드]\n    - 가로 열 수에 맞게 \"list5\"에서 숫자를 변경하세요.\n    - 옵션 수에 따라 사이즈 데이터 <ul>...</ul> 그룹을 반복 추가하세요.\n    -->\n\t\t\t\t\t<!-- 사이즈 항목명 -->\n\t\t\t\t\t<ul class=\"sizetable_header\">\n\t\t\t\t\t\t<li>SIZE(CM)</li>\n\t\t\t\t\t\t<li>허리</li>\n\t\t\t\t\t\t<li>힙</li>\n\t\t\t\t\t\t<li>밑위</li>\n\t\t\t\t\t\t<li>허벅지</li>\n\t\t\t\t\t\t<li>밑단</li>\n\t\t\t\t\t\t<li>총길이</li>\n\t\t\t\t\t</ul>\n\t\t\t\t\t<!-- 사이즈 데이터 -->","rest":"<!-- 사이즈 측정 안내 -->\n\t\t\t\t\t<div class=\"sizetable_notice\">\n\t\t\t\t\t\t사이즈 측정은 상품을 바닥에 놓고 단면을 측정한 것이며,\n\t\t\t\t\t\t<br> 측정 방법, 수축력 소재(니트류)에 따라 1~3cm 오차가 있을 수 있습니다.\n\t\t\t\t\t</div>\n\t\t\t\t\t<!-- 모델 정보 -->\n\t\t\t\t\t<div class=\"sizetable_model\">\n\t\t\t\t\t\tSUYOUN : S 사이즈 착용 (163cm, 상의 55size, 하의 26inch, 신발 230mm)\n\t\t\t\t\t\t<br>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</td>\n\t\t</tr>\n\t</tbody>\n</table><a class=\"sizelink\" href=\"/article/notice/1/4/\">&#62;&#62; 사이즈 측정 방법 보러가기</a>"},"스커트":{"before":"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n\t<tbody>\n\t\t<tr>\n\t\t\t<td style=\"padding:5px;\">\n\t\t\t\t<div class=\"sizetable list5\">\n\t\t\t\t\t<!--\n    [가이드]\n    - 가로 열 수에 맞게 \"list5\"에서 숫자를 변경하세요.\n    - 옵션 수에 따라 사이즈 데이터 <ul>...</ul> 그룹을 반복 추가하세요.\n    -->\n\t\t\t\t\t<!-- 사이즈 항목명 -->\n\t\t\t\t\t<ul class=\"sizetable_header\">\n\t\t\t\t\t\t<li>SIZE(CM)</li>\n\t\t\t\t\t\t<li>허리</li>\n\t\t\t\t\t\t<li>힙</li>\n\t\t\t\t\t\t<li>밑단</li>\n\t\t\t\t\t\t<li>총길이</li>\n\t\t\t\t\t</ul>\n\t\t\t\t\t<!-- 사이즈 데이터 -->","rest":"<!-- 사이즈 측정 안내 -->\n\t\t\t\t\t<div class=\"sizetable_notice\">\n\t\t\t\t\t\t사이즈 측정은 상품을 바닥에 놓고 단면을 측정한 것이며,\n\t\t\t\t\t\t<br> 측정 방법, 수축력 소재(니트류)에 따라 1~3cm 오차가 있을 수 있습니다.\n\t\t\t\t\t</div>\n\t\t\t\t\t<!-- 모델 정보 -->\n\t\t\t\t\t<div class=\"sizetable_model\">\n\t\t\t\t\t\tSUYOUN : S 사이즈 착용 (163cm, 상의 55size, 하의 26inch, 신발 230mm)\n\t\t\t\t\t\t<br>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</td>\n\t\t</tr>\n\t</tbody>\n</table><a class=\"sizelink\" href=\"/article/notice/1/4/\">&#62;&#62; 사이즈 측정 방법 보러가기</a>"},"원피스":{"before":"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n\t<tbody>\n\t\t<tr>\n\t\t\t<td style=\"padding:5px;\">\n\t\t\t\t<div class=\"sizetable list5\">\n\t\t\t\t\t<!--\n    [가이드]\n    - 가로 열 수에 맞게 \"list5\"에서 숫자를 변경하세요.\n    - 옵션 수에 따라 사이즈 데이터 <ul>...</ul> 그룹을 반복 추가하세요.\n    -->\n\t\t\t\t\t<!-- 사이즈 항목명 -->\n\t\t\t\t\t<ul class=\"sizetable_header\">\n\t\t\t\t\t\t<li>SIZE(CM)</li>\n\t\t\t\t\t\t<li>어깨</li>\n\t\t\t\t\t\t<li>가슴</li>\n\t\t\t\t\t\t<li>암홀</li>\n\t\t\t\t\t\t<li>팔길이</li>\n\t\t\t\t\t\t<li>소매</li>\n\t\t\t\t\t\t<li>허리</li>\n\t\t\t\t\t\t<li>힙</li>\n\t\t\t\t\t\t<li>밑단</li>\n\t\t\t\t\t\t<li>총길이</li>\n\t\t\t\t\t</ul>\n\t\t\t\t\t<!-- 사이즈 데이터 -->","rest":"<!-- 사이즈 측정 안내 -->\n\t\t\t\t\t<div class=\"sizetable_notice\">\n\t\t\t\t\t\t사이즈 측정은 상품을 바닥에 놓고 단면을 측정한 것이며,\n\t\t\t\t\t\t<br> 측정 방법, 수축력 소재(니트류)에 따라 1~3cm 오차가 있을 수 있습니다.\n\t\t\t\t\t</div>\n\t\t\t\t\t<!-- 모델 정보 -->\n\t\t\t\t\t<div class=\"sizetable_model\">\n\t\t\t\t\t\tSUYOUN : S 사이즈 착용 (163cm, 상의 55size, 하의 26inch, 신발 230mm)\n\t\t\t\t\t\t<br>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</td>\n\t\t</tr>\n\t</tbody>\n</table><a class=\"sizelink\" href=\"/article/notice/1/4/\">&#62;&#62; 사이즈 측정 방법 보러가기</a>"},"아우터":{"before":"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n\t<tbody>\n\t\t<tr>\n\t\t\t<td style=\"padding:5px;\">\n\t\t\t\t<div class=\"sizetable list5\">\n\t\t\t\t\t<!--\n    [가이드]\n    - 가로 열 수에 맞게 \"list5\"에서 숫자를 변경하세요.\n    - 옵션 수에 따라 사이즈 데이터 <ul>...</ul> 그룹을 반복 추가하세요.\n    -->\n\t\t\t\t\t<!-- 사이즈 항목명 -->\n\t\t\t\t\t<ul class=\"sizetable_header\">\n\t\t\t\t\t\t<li>SIZE(CM)</li>\n\t\t\t\t\t\t<li>어깨</li>\n\t\t\t\t\t\t<li>가슴</li>\n\t\t\t\t\t\t<li>암홀</li>\n\t\t\t\t\t\t<li>팔길이</li>\n\t\t\t\t\t\t<li>소매</li>\n\t\t\t\t\t\t<li>허리</li>\n\t\t\t\t\t\t<li>밑단</li>\n\t\t\t\t\t\t<li>총길이</li>\n\t\t\t\t\t</ul>\n\t\t\t\t\t<!-- 사이즈 데이터 -->","rest":"<!-- 사이즈 측정 안내 -->\n\t\t\t\t\t<div class=\"sizetable_notice\">\n\t\t\t\t\t\t사이즈 측정은 상품을 바닥에 놓고 단면을 측정한 것이며,\n\t\t\t\t\t\t<br> 측정 방법, 수축력 소재(니트류)에 따라 1~3cm 오차가 있을 수 있습니다.\n\t\t\t\t\t</div>\n\t\t\t\t\t<!-- 모델 정보 -->\n\t\t\t\t\t<div class=\"sizetable_model\">\n\t\t\t\t\t\tSUYOUN : FREE 사이즈 착용 (163cm, 상의 55size, 하의 26inch, 신발 230mm)\n\t\t\t\t\t\t<br>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</td>\n\t\t</tr>\n\t</tbody>\n</table><a class=\"sizelink\" href=\"/article/notice/1/4/\">&#62;&#62; 사이즈 측정 방법 보러가기</a>"}};
+function buildTableHTML(cols, tableId) {
+  let html = `<thead><tr><th class="col-num">#</th><th class="col-size">사이즈명</th>`;
+  cols.forEach(c => { html += `<th>${c}</th>`; });
+  html += `</tr></thead><tbody>`;
+  for (let r = 0; r < NUM_ROWS; r++) {
+    html += `<tr><td class="row-num">${r+1}</td>`;
+    html += `<td><input class="inp-size" type="text" placeholder="예) S" data-row="${r}" data-col="size" data-tid="${tableId}" /></td>`;
+    cols.forEach((_, ci) => {
+      html += `<td><input type="text" placeholder="-" data-row="${r}" data-col="${ci}" data-tid="${tableId}" /></td>`;
+    });
+    html += `</tr>`;
+  }
+  html += `</tbody>`;
+  return html;
+}
+
+function attachEnter(tableEl) {
+  const inputs = [...tableEl.querySelectorAll('input')];
+  inputs.forEach((inp, i) => {
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (inputs[i+1]) inputs[i+1].focus(); } });
+  });
+}
+
+function readRows(tableEl, cols) {
+  const rows = [];
+  for (let r = 0; r < NUM_ROWS; r++) {
+    const si = tableEl.querySelector(`input[data-row="${r}"][data-col="size"]`);
+    const sn = si ? si.value.trim().toUpperCase() : '';
+    if (!sn) continue;
+    const vals = cols.map((_, ci) => {
+      const inp = tableEl.querySelector(`input[data-row="${r}"][data-col="${ci}"]`);
+      return fmtVal(inp ? inp.value : '');
+    });
+    rows.push({ size: sn, vals });
+  }
+  return rows;
+}
+
+function fmtVal(v) {
+  const s = v.trim();
+  if (!s) return '-';
+  const n = parseFloat(s);
+  if (isNaN(n)) return s;
+  return n % 1 === 0 ? String(Math.round(n)) : String(n);
+}
+
+function buildUls(rows) {
+  return rows.map(({ size, vals }) => {
+    let items = `\n\t\t\t\t\t\t<li>${size}</li>`;
+    vals.forEach(v => { items += `\n\t\t\t\t\t\t<li>${v}</li>`; });
+    return `\n\t\t\t\t\t<ul>${items}\n\t\t\t\t\t</ul>`;
+  }).join('');
+}
+
+function buildExtraHtml(name, cols, rows, firstSize) {
+  const totalCols = cols.length + 1;
+  const headers = ['SIZE(CM)', ...cols].map(c => `\n\t\t\t\t\t\t\t\t\t\t\t\t<li>${c}</li>`).join('');
+  const uls = rows.map(({ size, vals }) => {
+    let items = `\n\t\t\t\t\t\t\t\t\t\t\t\t\t<li>${size}</li>`;
+    vals.forEach(v => { items += `\n\t\t\t\t\t\t\t\t\t\t\t\t\t<li>${v}</li>`; });
+    return `\n\t\t\t\t\t\t\t\t\t\t\t\t<ul>${items}\n\t\t\t\t\t\t\t\t\t\t\t\t</ul>`;
+  }).join('');
+
+  const modelSize = firstSize || 'FREE';
+  return `\n\t\t\t\t\t\t<br><b>${name}</b><br>
+\t\t\t\t\t\t<table border="0" cellpadding="0" cellspacing="0" width="100%">
+\t\t\t\t\t\t\t<tbody>
+\t\t\t\t\t\t\t\t<tr>
+\t\t\t\t\t\t\t\t\t<td style="padding:5px;">
+\t\t\t\t\t\t\t\t\t\t<div class="sizetable list${totalCols}">
+\t\t\t\t\t\t\t\t\t\t\t<!--
+    [가이드]
+    - 가로 열 수에 맞게 "list${totalCols}"에서 숫자를 변경하세요.
+    - 옵션 수에 따라 사이즈 데이터 <ul>...</ul> 그룹을 반복 추가하세요.
+    -->
+\t\t\t\t\t\t\t\t\t\t\t<!-- 사이즈 항목명 -->
+\t\t\t\t\t\t\t\t\t\t\t<ul class="sizetable_header">${headers}
+\t\t\t\t\t\t\t\t\t\t\t</ul>
+\t\t\t\t\t\t\t\t\t\t\t<!-- 사이즈 데이터 -->${uls}
+\t\t\t\t\t\t\t\t\t\t\t<!-- 사이즈 측정 안내 -->
+\t\t\t\t\t\t\t\t\t\t\t<div class="sizetable_notice">
+\t\t\t\t\t\t\t\t\t\t\t\t사이즈 측정은 상품을 바닥에 놓고 단면을 측정한 것이며,
+\t\t\t\t\t\t\t\t\t\t\t\t<br> 측정 방법, 수축력 소재(니트류)에 따라 1~3cm 오차가 있을 수 있습니다.
+\t\t\t\t\t\t\t\t\t\t\t</div>
+\t\t\t\t\t\t\t\t\t\t\t<!-- 모델 정보 -->
+\t\t\t\t\t\t\t\t\t\t\t<div class="sizetable_model">
+\t\t\t\t\t\t\t\t\t\t\t\tSUYOUN : ${modelSize} 사이즈 착용 (163cm, 상의 55size, 하의 26inch, 신발 230mm)
+\t\t\t\t\t\t\t\t\t\t\t\t<br>
+\t\t\t\t\t\t\t\t\t\t\t</div>
+\t\t\t\t\t\t\t\t\t\t</div>
+\t\t\t\t\t\t\t\t\t</td>
+\t\t\t\t\t\t\t\t</tr>
+\t\t\t\t\t\t\t</tbody>
+\t\t\t\t\t\t</table>`;
+}
+
+function renderAddButtons() {
+  const area = document.getElementById('add-section-area');
+  if (!CLOTH_TYPES.includes(currentType)) { area.innerHTML = ''; return; }
+  const usedKeys = extraSections.map(s => s.key).filter(k => k !== '직접입력');
+  let html = `<div class="add-section-area-title">추가 섹션</div><div class="add-section-btns">`;
+  EXTRA_OPTIONS.forEach(opt => {
+    const disabled = opt.key !== '직접입력' && usedKeys.includes(opt.key);
+    html += `<button class="btn-add-section" onclick="addSection('${opt.key}')"${disabled ? ' disabled' : ''}>+ ${opt.key}</button>`;
+  });
+  html += `</div>`;
+  area.innerHTML = html;
+}
+
+function addSection(key, predefinedCols) {
+  const id = ++extraIdCounter;
+  const opt = EXTRA_OPTIONS.find(o => o.key === key);
+  const cols = predefinedCols ? [...predefinedCols] : [...(opt ? opt.cols || [] : [])];
+  const sec = { id, key, name: key, cols };
+  extraSections.push(sec);
+
+  const wrap = document.getElementById('extra-sections-wrap');
+  const div = document.createElement('div');
+  div.className = 'section-card';
+  div.id = `esec-${id}`;
+
+  const isCustom = key === '직접입력';
+  const customColsHtml = isCustom ? `
+    <div class="custom-cols-row">
+      <span>항목명:</span>
+      ${[0,1,2,3].map(i => `<input type="text" id="cc-${id}-${i}" placeholder="항목${i+1}" oninput="updateCustomCols(${id})">`).join('')}
+    </div>` : '';
+
+  const nameHtml = isCustom
+    ? `<input type="text" value="직접입력" id="sname-${id}" style="font-size:13px;font-weight:700;border:none;outline:none;background:transparent;font-family:inherit;width:110px;" placeholder="섹션명">`
+    : `<span>${key}</span>`;
+
+  const badgeText = cols.length ? cols.join(' · ') : '항목 직접 입력';
+
+  div.innerHTML = `
+    <div class="section-card-header">
+      <div class="section-card-title">${nameHtml}<span class="section-badge extra" id="sbadge-${id}">${badgeText}</span></div>
+      <button class="btn-remove-section" onclick="removeSection(${id})">✕ 삭제</button>
+    </div>
+    ${customColsHtml}
+    <table class="size-table" id="etbl-${id}"></table>`;
+
+  wrap.appendChild(div);
+
+  const tbl = document.getElementById(`etbl-${id}`);
+  tbl.innerHTML = buildTableHTML(cols.length ? cols : ['항목1','항목2'], `e${id}`);
+  attachEnter(tbl);
+  renderAddButtons();
+}
+
+function updateCustomCols(id) {
+  const sec = extraSections.find(s => s.id === id);
+  if (!sec) return;
+  const newCols = [0,1,2,3].map(i => {
+    const el = document.getElementById(`cc-${id}-${i}`);
+    return el && el.value.trim() ? el.value.trim() : null;
+  }).filter(Boolean);
+  sec.cols = newCols.length ? newCols : ['항목1'];
+  const badge = document.getElementById(`sbadge-${id}`);
+  if (badge) badge.textContent = sec.cols.join(' · ');
+  const tbl = document.getElementById(`etbl-${id}`);
+  tbl.innerHTML = buildTableHTML(sec.cols, `e${id}`);
+  attachEnter(tbl);
+}
+
+function removeSection(id) {
+  extraSections = extraSections.filter(s => s.id !== id);
+  const el = document.getElementById(`esec-${id}`);
+  if (el) el.remove();
+  renderAddButtons();
+}
+
+function selectType(type) {
+  currentType = type;
+  extraSections = [];
+  extraIdCounter = 0;
+  document.querySelectorAll('.cloth-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+  document.getElementById('extra-sections-wrap').innerHTML = '';
+
+  const typeInfo = TYPES[type];
+  const { cols, isAccessory } = typeInfo;
+  document.getElementById('panel-type-label').textContent = type;
+  document.getElementById('panel-col-count').textContent = `항목 ${cols.length}개`;
+  document.getElementById('main-section-name').textContent = isAccessory ? type + ' 사이즈' : typeInfo.isSetup ? '상의' : '기본 사이즈';
+
+  const tbl = document.getElementById('size-table');
+  tbl.innerHTML = buildTableHTML(cols, 'main');
+  attachEnter(tbl);
+
+  // 셋업이면 바지/스커트 섹션 자동 추가
+  if (typeInfo.isSetup && typeInfo.setupExtra) {
+    addSection(typeInfo.setupExtra.key, typeInfo.setupExtra.cols);
+  }
+
+  renderAddButtons();
+  resetOutput();
+}
+
+function generate() {
+  const { cols, isAccessory } = TYPES[currentType];
+  const mainTbl = document.getElementById('size-table');
+  const mainRows = readRows(mainTbl, cols);
+
+  if (!mainRows.length) { alert('사이즈명을 최소 1개 이상 입력해주세요.'); return; }
+
+  let code = '';
+
+  if (isAccessory) {
+    const totalCols = cols.length + 1;
+    const headers = ['SIZE(CM)', ...cols].map(c => `\n\t\t\t\t\t\t<li>${c}</li>`).join('');
+    const before = `<table border="0" cellpadding="0" cellspacing="0" width="100%">\n\t<tbody>\n\t\t<tr>\n\t\t\t<td style="padding:5px;">\n\t\t\t\t<div class="sizetable list${totalCols}">\n\t\t\t\t\t<!-- 사이즈 항목명 -->\n\n\t\t\t\t\t<ul class="sizetable_header">${headers}\n\t\t\t\t\t</ul>\n\n\t\t\t\t\t<!-- 사이즈 데이터 -->`;
+    const firstSize = mainRows[0].size;
+    const rest = `\n\t\t\t\t\t<!-- 사이즈 측정 안내 -->\n\t\t\t\t\t<div class="sizetable_notice">\n\t\t\t\t\t\t사이즈 측정은 상품을 바닥에 놓고 단면을 측정한 것이며,\n\t\t\t\t\t\t<br> 측정 방법, 수축력 소재(니트류)에 따라 1~3cm 오차가 있을 수 있습니다.\n\t\t\t\t\t</div>\n\t\t\t\t\t<!-- 모델 정보 -->\n\t\t\t\t\t<div class="sizetable_model">\n\t\t\t\t\t\tSUYOUN : ${firstSize} 사이즈 착용 (163cm, 상의 55size, 하의 26inch, 신발 230mm)\n\t\t\t\t\t\t<br>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</td>\n\t\t</tr>\n\t</tbody>\n</table>&nbsp;&nbsp;<a class="sizelink" href="/article/notice/1/4/">&#62;&#62; 사이즈 측정 방법 보러가기</a>`;
+    code = before + '\n' + buildUls(mainRows) + rest;
+  } else {
+    const tmplKey = TEMPLATES[currentType] ? currentType : '상의';
+    const tmpl = TEMPLATES[tmplKey];
+    let extraHtml = '';
+    extraSections.forEach(sec => {
+      const nameEl = document.getElementById(`sname-${sec.id}`);
+      const secName = nameEl ? (nameEl.value.trim() || sec.name) : sec.name;
+      const secTbl = document.getElementById(`etbl-${sec.id}`);
+      if (!secTbl) return;
+      const secRows = readRows(secTbl, sec.cols);
+      if (secRows.length) extraHtml += buildExtraHtml(secName, sec.cols, secRows, mainRows[0].size);
+    });
+
+    const firstSize = mainRows[0].size;
+    const restUpdated = tmpl.rest.replace(/(SUYOUN : )(FREE|S|M|L|XL|XXL|\d+)( 사이즈 착용)/, `$1${firstSize}$3`);
+
+    if (extraHtml) {
+      // 메인 표 완전히 닫기 (notice/model 없이)
+      const mainClose = '\n\t\t\t\t</div>\n\t\t\t</td>\n\t\t</tr>\n\t</tbody>\n</table>';
+      const mainCode = tmpl.before + '\n' + buildUls(mainRows) + mainClose;
+      const sizelink = '&nbsp;&nbsp;<a class="sizelink" href="/article/notice/1/4/">&#62;&#62; 사이즈 측정 방법 보러가기</a>';
+      const isSetup = TYPES[currentType].isSetup;
+      const mainPrefix = isSetup ? '<br><b>상의</b><br>\n' : '';
+      code = mainPrefix + mainCode + extraHtml + sizelink;
+    } else {
+      code = tmpl.before + '\n' + buildUls(mainRows) + '\n\t\t\t\t\t' + restUpdated;
+    }
+  }
+
+  generatedCode = code;
+  const codeEl = document.getElementById('code-output');
+  codeEl.textContent = code;
+  codeEl.style.display = 'block';
+  document.getElementById('code-placeholder').style.display = 'none';
+  document.getElementById('copy-btn').disabled = false;
+  document.getElementById('preview-btn').disabled = false;
+}
+
+function resetOutput() {
+  generatedCode = '';
+  document.getElementById('code-output').style.display = 'none';
+  document.getElementById('code-placeholder').style.display = 'flex';
+  const cb = document.getElementById('copy-btn');
+  cb.disabled = true; cb.classList.remove('copied'); cb.querySelector('span').textContent = '코드 복사';
+  document.getElementById('preview-btn').disabled = true;
+}
+
+function clearAll() { selectType(currentType); }
+
+function copyCode() {
+  if (!generatedCode) return;
+  navigator.clipboard.writeText(generatedCode).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.classList.add('copied'); btn.querySelector('span').textContent = '복사 완료!';
+    setTimeout(() => { btn.classList.remove('copied'); btn.querySelector('span').textContent = '코드 복사'; }, 2000);
+  });
+}
+
+function openPreview() {
+  if (!generatedCode) return;
+  document.getElementById('modal-body').innerHTML = generatedCode;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closePreview() { document.getElementById('modal-overlay').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePreview(); });
+
+document.querySelectorAll('.cloth-btn').forEach(b => b.addEventListener('click', () => selectType(b.dataset.type)));
+selectType('상의');
+</script>
+</body>
+</html>
