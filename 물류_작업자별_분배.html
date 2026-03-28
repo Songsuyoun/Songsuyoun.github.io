@@ -118,6 +118,12 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 .preview-tbl tr:last-child td{border-bottom:none;}
 .preview-footer{padding:9px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;}
 .preview-footer strong{color:var(--text2);}
+.preview-tab.te{} 
+.preview-tab.te:hover{background:#FDF2F8;color:#9333EA;}
+.preview-tab.te.active{color:#9333EA;border-color:#9333EA;}
+.preview-tab.te.active .tab-cnt{background:#F3E8FF;color:#9333EA;}
+.emp-row td{background:#FDF4FF!important;}
+.emp-row:hover td{background:#F3E8FF!important;}
 @media(max-width:480px){.stat-grid{grid-template-columns:1fr 1fr;}.worker-grid{grid-template-columns:1fr;}.main{padding:20px 14px 0;}}
 </style>
 </head>
@@ -183,6 +189,9 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
           <div class="preview-tab t2" id="tab2" onclick="switchTab(2)">
             <span id="tab2name">윤혜정</span><span class="tab-cnt" id="tab2cnt">0</span>
           </div>
+          <div class="preview-tab te" id="tabE" onclick="switchTab('E')" style="display:none">
+            👤 직원구매<span class="tab-cnt" id="tabEcnt">0</span>
+          </div>
         </div>
         <div class="preview-panel" id="panel1">
           <div class="preview-scroll" id="scroll1"><table class="preview-tbl" id="tbl1"></table></div>
@@ -195,6 +204,10 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
         <div class="preview-panel hidden" id="panel2">
           <div class="preview-scroll" id="scroll2"><table class="preview-tbl" id="tbl2"></table></div>
           <div class="preview-footer"><span id="footer2"></span><span id="footer2r" style="color:var(--muted2)"></span></div>
+        </div>
+        <div class="preview-panel hidden" id="panelE">
+          <div class="preview-scroll" id="scrollE"><table class="preview-tbl" id="tblE"></table></div>
+          <div class="preview-footer"><span id="footerE"></span><span id="footerEr" style="color:var(--muted2)"></span></div>
         </div>
       </div>
     </div>
@@ -456,9 +469,26 @@ async function run(){
 
     // 3. 스팀
     markStep(2,'active');
-    const stmRaw=data.filter(r=>r.상품메모1.includes('스팀'));
-    const nsRaw =data.filter(r=>!r.상품메모1.includes('스팀'));
-    pushLog('3',`스팀 ${stmRaw.length}행 / 비스팀 ${nsRaw.length}행`);
+    // 직원구매 판단: 바코드번호가 5자리 이하 순수 숫자
+    function isEmployee(r){
+      const raw = r.바코드번호;
+      if(raw === null || raw === undefined || raw === '') return false;
+      // 숫자로 들어온 경우 (1235, 1235.0 등) → 정수로 변환 후 자릿수 확인
+      if(typeof raw === 'number'){
+        const n = Math.round(raw);
+        return n > 0 && String(n).length <= 5;
+      }
+      // 문자열로 들어온 경우 → 쉼표/공백/소수점 제거 후 확인
+      const b = String(raw).replace(/[,\s]/g,'').trim();
+      // 소수점 있으면 정수 부분만
+      const intPart = b.includes('.') ? b.split('.')[0] : b;
+      return /^\d{1,5}$/.test(intPart) && parseInt(intPart) > 0;
+    }
+    const empRaw = data.filter(r=>isEmployee(r));
+    const nonEmp = data.filter(r=>!isEmployee(r));
+    const stmRaw = nonEmp.filter(r=>r.상품메모1.includes('스팀'));
+    const nsRaw  = nonEmp.filter(r=>!r.상품메모1.includes('스팀'));
+    pushLog('3',`직원구매 ${empRaw.length}행 제외 → 스팀 ${stmRaw.length}행 / 비스팀 ${nsRaw.length}행`);
     markStep(2,'done'); setProgress(37,'수량 합산...');
 
     // 15. 동일상품 합산
@@ -500,7 +530,8 @@ async function run(){
       return rows.map(r=>({
         장끼:'',공급처:r.공급처,사입명:r.사입명,
         상품명:r.상품명,옵션:r.옵션,입고수량:r.입고수량,
-        수량체크:'',메모:'',상품메모1:r.상품메모1
+        수량체크:'',메모:'',상품메모1:r.상품메모1,
+        바코드번호:r.바코드번호  // 미리보기용 (엑셀 출력엔 안 들어감)
       }));
     }
     const colWidths=calcColWidths([...toSheet(w1rows),...toSheet(w2rows),...toSheet(stm)]);
@@ -509,18 +540,65 @@ async function run(){
     markStep(5,'active');
     const wb1=new ExcelJS.Workbook();
     wb1.creator='더제이수';
-    wb1.calcProperties={fullCalcOnLoad:true}; // 열릴때 자동 재계산
+    wb1.calcProperties={fullCalcOnLoad:true};
     buildSheet(wb1,'입고내역',toSheet(w1rows),toSheet(stm),w1,true,colWidths);
+    // 직원구매 시트는 wb2 생성 후 addEmpSheet로 일괄 추가
     const buf1=await wb1.xlsx.writeBuffer();
+
+    // 직원구매 시트용 row 변환 (바코드 포함, 상품메모1 포함)
+    function toEmpSheet(rows){
+      return rows.map(r=>({
+        장끼:'',공급처:r.공급처,사입명:r.사입명,
+        상품명:r.상품명,옵션:r.옵션,입고수량:r.입고수량,
+        수량체크:'',메모:'',상품메모1:r.상품메모1
+      }));
+    }
+    // 직원구매 합산
+    const empMerged = mergeRows(empRaw);
+    const empQty = empMerged.reduce((a,r)=>a+r.입고수량,0);
+
+    // 직원구매 시트 추가 함수
+    function addEmpSheet(wb){
+      if(empMerged.length === 0) return;
+      const PURPLE='FF9333EA';
+      const PURPLE_LIGHT='FFF3E8FF';
+      const empWs = wb.addWorksheet('직원구매');
+      empWs.columns = HEADERS.map((h,i)=>({key:h, width:colWidths[i]}));
+      // 헤더
+      empWs.getRow(1).height=20;
+      HEADERS.forEach((h,ci)=>{
+        S(empWs.getCell(1,ci+1), h, {fg:C_WHITE, bg:PURPLE, bold:true});
+      });
+      // 데이터
+      toEmpSheet(empMerged).forEach((row,ri)=>{
+        const er=2+ri;
+        empWs.getRow(er).height=16;
+        HEADERS.forEach((h,ci)=>{
+          const v=row[h]??'';
+          const val=h==='입고수량'?(Number(v)||0):String(v);
+          S(empWs.getCell(er,ci+1), val, {bg:PURPLE_LIGHT, ha:LEFT_COLS.has(h)?'left':'center'});
+        });
+      });
+      empWs.views=[{state:'frozen',xSplit:0,ySplit:1,activeCell:'A2'}];
+    }
 
     // 윤혜정 xlsx
     const wb2=new ExcelJS.Workbook();
     wb2.creator='더제이수';
     wb2.calcProperties={fullCalcOnLoad:true};
     buildSheet(wb2,'입고내역',toSheet(w2rows),[],w2,false,colWidths);
+    addEmpSheet(wb2);  // 직원구매 시트 추가
     const buf2=await wb2.xlsx.writeBuffer();
 
-    pushLog('5',`xlsx 2개 생성 ✓ 총갯수 ${w1}=${w1qty} / ${w2}=${w2qty} / 스팀=${stmQty}`);
+    // 이혜정 파일 재생성 (직원구매 시트 포함)
+    const wb1b=new ExcelJS.Workbook();
+    wb1b.creator='더제이수';
+    wb1b.calcProperties={fullCalcOnLoad:true};
+    buildSheet(wb1b,'입고내역',toSheet(w1rows),toSheet(stm),w1,true,colWidths);
+    addEmpSheet(wb1b);
+    const buf1Final=await wb1b.xlsx.writeBuffer();
+
+    pushLog('5',`xlsx 2개 생성 ✓ ${w1}=${w1qty} / ${w2}=${w2qty} / 스팀=${stmQty} / 직원구매=${empQty}개(${empMerged.length}행)`);
     markStep(5,'done'); setProgress(80,'CSV...');
 
     // CSV
@@ -539,7 +617,7 @@ async function run(){
     // ZIP
     markStep(7,'active');
     const zip=new JSZip();
-    zip.file(`${w1}_수량확인.xlsx`,buf1);
+    zip.file(`${w1}_수량확인.xlsx`,buf1Final);
     zip.file(`${w2}_수량확인.xlsx`,buf2);
     zip.file(`${w1}_바코드출력_${todayFmt}.csv`,csv1);
     zip.file(`${w2}_바코드출력_${todayFmt}.csv`,csv2);
@@ -549,10 +627,14 @@ async function run(){
     markStep(7,'done'); setProgress(100,'완료!');
 
     // 결과 UI
+    const empStatHtml = empMerged.length > 0
+      ? `<div class="stat-box" style="background:#F3E8FF"><div class="s-name">👤 직원구매 (별도)</div><div class="s-val" style="color:#9333EA">${empQty}</div><div class="s-sub">${empMerged.length}행 · CSV제외</div></div>`
+      : '';
     document.getElementById('statGrid').innerHTML=`
       <div class="stat-box sb-blue"><div class="s-name">${w1} (비스팀)</div><div class="s-val">${w1qty}</div><div class="s-sub">${w1rows.length}행</div></div>
       <div class="stat-box sb-pink"><div class="s-name">${w2}</div><div class="s-val">${w2qty}</div><div class="s-sub">${w2rows.length}행</div></div>
-      <div class="stat-box sb-amber"><div class="s-name">스팀 (${w1})</div><div class="s-val">${stmQty}</div><div class="s-sub">${stm.length}행</div></div>`;
+      <div class="stat-box sb-amber"><div class="s-name">스팀 (${w1})</div><div class="s-val">${stmQty}</div><div class="s-sub">${stm.length}행</div></div>
+      ${empStatHtml}`;
     document.getElementById('fileChips').innerHTML=`
       <span class="chip chip-xl">📊 ${w1}_수량확인.xlsx</span>
       <span class="chip chip-xl">📊 ${w2}_수량확인.xlsx</span>
@@ -565,7 +647,7 @@ async function run(){
     document.getElementById('resultCard').style.display='block';
 
     // 미리보기 렌더
-    renderPreview(w1, w2, w1rows, w2rows, stm);
+    renderPreview(w1, w2, w1rows, w2rows, stm, toSheet(empMerged));
     switchTab(1);
     window.addEventListener('resize', setPreviewHeight);
 
@@ -583,30 +665,39 @@ async function run(){
 
 /* ── 탭 전환 ── */
 function switchTab(n){
-  ['tab1','tabS','tab2'].forEach(id=>document.getElementById(id).classList.remove('active'));
-  ['panel1','panelS','panel2'].forEach(id=>document.getElementById(id).classList.add('hidden'));
-  if(n===1){ document.getElementById('tab1').classList.add('active'); document.getElementById('panel1').classList.remove('hidden'); }
-  else if(n==='S'){ document.getElementById('tabS').classList.add('active'); document.getElementById('panelS').classList.remove('hidden'); }
-  else{ document.getElementById('tab2').classList.add('active'); document.getElementById('panel2').classList.remove('hidden'); }
-  // 패널 높이 자동 설정
+  ['tab1','tabS','tab2','tabE'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  ['panel1','panelS','panel2','panelE'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  if(n===1){       document.getElementById('tab1').classList.add('active');  document.getElementById('panel1').classList.remove('hidden'); }
+  else if(n==='S'){document.getElementById('tabS').classList.add('active');  document.getElementById('panelS').classList.remove('hidden'); }
+  else if(n==='E'){document.getElementById('tabE').classList.add('active');  document.getElementById('panelE').classList.remove('hidden'); }
+  else{            document.getElementById('tab2').classList.add('active');  document.getElementById('panel2').classList.remove('hidden'); }
   setPreviewHeight();
 }
 
 function setPreviewHeight(){
-  // 화면 높이 기준 동적 높이 (화면 절반 이상)
   const vh = window.innerHeight;
   const h = Math.max(320, Math.floor(vh * 0.55)) + 'px';
-  ['scroll1','scrollS','scroll2'].forEach(id=>{
+  ['scroll1','scrollS','scroll2','scrollE'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.style.maxHeight = h;
   });
 }
 
 /* ── 테이블 빌더 ── */
-function buildTable(tblId, rows, footerId, footerRId, label, color){
-  const COLS = ['공급처','사입명','상품명','옵션','입고수량','상품메모1'];
-  const HA   = {공급처:'left',사입명:'left',상품명:'left',옵션:'left',입고수량:'right',상품메모1:'left'};
+function buildTable(tblId, rows, footerId, footerRId, label, color, isEmp=false){
+  const COLS = ['공급처','사입명','상품명','옵션','입고수량','바코드번호','상품메모1'];
+  const HA   = {공급처:'left',사입명:'left',상품명:'left',옵션:'left',입고수량:'right',바코드번호:'center',상품메모1:'left'};
   const qty  = rows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
+
+  // 직원구매 판단 함수
+  function isEmpRow(r){
+    const raw = r.바코드번호;
+    if(raw === null || raw === undefined || raw === '') return false;
+    if(typeof raw === 'number'){ const n=Math.round(raw); return n>0 && String(n).length<=5; }
+    const b = String(raw).replace(/[,\s]/g,'').trim();
+    const intPart = b.includes('.') ? b.split('.')[0] : b;
+    return /^\d{1,5}$/.test(intPart) && parseInt(intPart) > 0;
+  }
 
   const tbl = document.getElementById(tblId);
   let html = '<thead><tr>';
@@ -614,16 +705,22 @@ function buildTable(tblId, rows, footerId, footerRId, label, color){
   COLS.forEach(c=>{ html += `<th class="${HA[c]==='left'?'left':''}">${c}</th>`; });
   html += '</tr></thead><tbody>';
 
-  let toggle=false, prevSup=null, num=1;
-  for(const row of rows){
-    if(row.공급처 !== prevSup){ toggle=!toggle; prevSup=row.공급처; }
-    const cls = toggle ? ' class="alt"' : '';
-    html += `<tr${cls}><td class="center" style="color:var(--muted2);font-size:10px">${num++}</td>`;
-    COLS.forEach(c=>{
-      const v = String(row[c]??'').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-      html += `<td class="${HA[c]||'left'}" title="${v}">${v||'<span style="color:var(--muted2)">-</span>'}</td>`;
-    });
-    html += '</tr>';
+  if(rows.length === 0){
+    html += `<tr><td colspan="${COLS.length+1}" style="text-align:center;color:var(--muted2);padding:24px">데이터 없음</td></tr>`;
+  } else {
+    let toggle=false, prevSup=null, num=1;
+    for(const row of rows){
+      if(row.공급처 !== prevSup){ toggle=!toggle; prevSup=row.공급처; }
+      const emp = isEmpRow(row);
+      let rowClass = emp ? 'emp-row' : (toggle ? 'alt' : '');
+      html += `<tr class="${rowClass}"><td class="center" style="color:var(--muted2);font-size:10px">${num++}</td>`;
+      COLS.forEach(c=>{
+        const v = String(row[c]??'').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        const extra = (c==='바코드번호' && emp) ? ' style="color:#9333EA;font-weight:700"' : '';
+        html += `<td class="${HA[c]||'left'}"${extra} title="${v}">${v||'<span style="color:var(--muted2)">-</span>'}</td>`;
+      });
+      html += '</tr>';
+    }
   }
   html += '</tbody>';
   tbl.innerHTML = html;
@@ -635,23 +732,28 @@ function buildTable(tblId, rows, footerId, footerRId, label, color){
 }
 
 /* ── 미리보기 전체 렌더 ── */
-function renderPreview(w1name, w2name, w1rows, w2rows, stmRows){
-  // 이름 업데이트
+function renderPreview(w1name, w2name, w1rows, w2rows, stmRows, empRows){
   document.getElementById('tab1name').textContent = w1name;
   document.getElementById('tab2name').textContent = w2name;
 
-  // 수량 뱃지
-  const w1qty = w1rows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
-  const w2qty = w2rows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
+  const w1qty  = w1rows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
+  const w2qty  = w2rows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
   const stmQty = stmRows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
+  const empQty = empRows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
+
   document.getElementById('tab1cnt').textContent = w1qty;
   document.getElementById('tabScnt').textContent = stmQty;
   document.getElementById('tab2cnt').textContent = w2qty;
+  document.getElementById('tabEcnt').textContent = empQty;
 
-  // 테이블 빌드
   buildTable('tbl1', w1rows, 'footer1', 'footer1r', w1name, 'var(--accent)');
   buildTable('tblS', stmRows,'footerS', 'footerSr', '스팀',  'var(--amber)');
   buildTable('tbl2', w2rows, 'footer2', 'footer2r', w2name, 'var(--pink)');
+  buildTable('tblE', empRows,'footerE', 'footerEr', '직원구매', '#9333EA', true);
+
+  // 직원구매 탭: 건수 있을 때만 표시
+  const tabE = document.getElementById('tabE');
+  tabE.style.display = empRows.length > 0 ? '' : 'none';
 
   setPreviewHeight();
 }
