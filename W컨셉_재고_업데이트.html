@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>the J.Soo · W컨셉 재고 작업</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#F7F8FA; --white:#fff; --black:#111318;
+  --primary:#2563EB; --pl:#EFF6FF;
+  --g1:#F3F4F6; --g2:#E5E7EB; --g3:#9CA3AF; --g4:#6B7280; --g5:#374151;
+  --ylw-bg:#FFFBEB; --ylw-bd:#FDE68A; --ylw-tx:#92400E;
+  --pur-bg:#F5F3FF; --pur-bd:#DDD6FE; --pur-tx:#5B21B6;
+  --grn-bg:#ECFDF5; --grn-tx:#065F46;
+  --red-bg:#FEF2F2; --red-tx:#991B1B;
+  --r:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--black);font-family:'Noto Sans KR','DM Sans',sans-serif;font-weight:300;font-size:14px;line-height:1.6;min-height:100vh;display:flex;flex-direction:column;}
+
+/* TOP HEADER */
+.top-header{background:var(--white);border-bottom:1px solid var(--g2);padding:0 28px;display:flex;align-items:center;gap:0;flex-shrink:0;flex-wrap:wrap;}
+.header-left{display:flex;align-items:center;gap:0;flex-shrink:0;}
+.header-brand{font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;padding:16px 0;white-space:nowrap;}
+.header-divider{width:1px;height:20px;background:var(--g2);margin:0 16px;}
+
+/* 생성기 버튼 */
+.gen-label{
+  font-size:15px;font-weight:500;color:var(--black);white-space:nowrap;
+  padding:0 4px;
+}
+
+.tab-bar{display:flex;flex:1;margin-left:8px;}
+.tab{padding:18px 20px;font-size:13px;color:var(--g4);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;}
+.tab:hover{color:var(--g5);}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:500;}
+.header-date{font-size:11px;color:var(--g3);margin-left:auto;white-space:nowrap;padding-left:16px;}
+
+/* CONTENT */
+.content{flex:1;padding:32px 44px;max-width:1200px;width:100%;margin:0 auto;}
+.page{display:none;animation:fadeIn .2s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* PAGE HEADER */
+.eyebrow{font-size:11px;font-weight:500;letter-spacing:2px;color:var(--primary);text-transform:uppercase;margin-bottom:5px;}
+.ptitle{font-family:'DM Sans',sans-serif;font-size:24px;font-weight:500;letter-spacing:-.3px;}
+.pdesc{margin-top:5px;font-size:13px;color:var(--g4);}
+.ph{margin-bottom:24px;}
+
+/* UPLOAD */
+.upload-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
+.upload-box{background:var(--white);border:2px dashed var(--g2);border-radius:var(--r);padding:22px 14px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.upload-box:hover{border-color:var(--primary);background:var(--pl);}
+.upload-box.done{border-color:#10B981;border-style:solid;background:#ECFDF5;}
+.upload-box.done .ub-icon{color:#10B981;}
+.upload-box input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.ub-icon{font-size:22px;margin-bottom:7px;color:var(--g3);}
+.ub-label{font-size:12px;font-weight:500;color:var(--g5);margin-bottom:2px;}
+.ub-hint{font-size:11px;color:var(--g3);}
+.ub-fname{font-size:11px;color:#065F46;margin-top:4px;font-weight:500;word-break:break-all;}
+
+.btn-run{width:100%;padding:13px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:14px;font-weight:500;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:background .2s;margin-bottom:16px;}
+.btn-run:hover{background:#1D4ED8;}
+.btn-run:disabled{background:var(--g3);cursor:not-allowed;}
+
+.status-bar{padding:11px 16px;border-radius:var(--r);font-size:13px;margin-bottom:16px;display:none;}
+.status-bar.info{background:var(--pl);color:var(--primary);}
+.status-bar.error{background:var(--red-bg);color:var(--red-tx);}
+.status-bar.success{background:var(--grn-bg);color:var(--grn-tx);}
+
+/* RESULT */
+.result-area{display:none;}
+.result-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;margin-top:8px;gap:12px;}
+.result-title{font-family:'DM Sans',sans-serif;font-size:18px;font-weight:500;}
+.dl-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.btn-dl{display:flex;align-items:center;gap:5px;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:500;font-family:'Noto Sans KR',sans-serif;cursor:pointer;border:1px solid;transition:all .15s;white-space:nowrap;}
+.btn-dl-main{background:var(--primary);color:#fff;border-color:var(--primary);}
+.btn-dl-main:hover{background:#1D4ED8;}
+.btn-dl-sub{background:var(--white);color:var(--g5);border-color:var(--g2);}
+.btn-dl-sub:hover{background:var(--g1);}
+.btn-dl-muted{background:var(--g1);color:var(--g4);border-color:var(--g2);font-size:11px;}
+.btn-dl-muted:hover{background:var(--g2);}
+
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--white);border:1px solid var(--g2);border-radius:var(--r);padding:16px 18px;}
+.stat-card.hi{background:var(--primary);border-color:var(--primary);}
+.stat-card.hi .s-num,.stat-card.hi .s-lbl{color:#fff;}
+.stat-card.hi .s-lbl{opacity:.8;}
+.s-num{font-family:'DM Sans',sans-serif;font-size:28px;font-weight:500;line-height:1;margin-bottom:4px;}
+.s-lbl{font-size:11px;color:var(--g4);}
+
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+.card{background:var(--white);border:1px solid var(--g2);border-radius:var(--r);overflow:hidden;}
+.card-head{padding:12px 16px;border-bottom:1px solid var(--g2);display:flex;align-items:center;gap:8px;}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;}
+.badge-pur{background:var(--pur-bg);color:var(--pur-tx);border:1px solid var(--pur-bd);}
+.badge-ylw{background:var(--ylw-bg);color:var(--ylw-tx);border:1px solid var(--ylw-bd);}
+.bdot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+.card-cnt{margin-left:auto;font-size:11px;color:var(--g3);background:var(--g1);padding:2px 8px;border-radius:20px;}
+.prow{padding:10px 16px;border-bottom:1px solid var(--g1);display:flex;align-items:center;justify-content:space-between;gap:10px;transition:background .1s;}
+.prow:hover{background:var(--bg);}
+.prow:last-child{border-bottom:none;}
+.pname{font-size:12px;color:var(--g5);}
+.popt{font-size:11px;color:var(--g3);background:var(--g1);padding:2px 7px;border-radius:4px;flex-shrink:0;white-space:nowrap;}
+.none-text{padding:18px 16px;font-size:12px;color:var(--g3);text-align:center;}
+
+.skip-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.skip-card{background:var(--white);border:1px solid var(--g2);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:10px;}
+.sk-num{font-family:'DM Sans',sans-serif;font-size:22px;font-weight:500;color:var(--g5);min-width:32px;}
+.sk-lbl{font-size:11px;color:var(--g4);line-height:1.4;}
+
+/* 재고관리_최종 안내 툴팁 */
+.info-note{background:var(--g1);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--g4);margin-top:8px;line-height:1.6;}
+.info-note strong{color:var(--g5);}
+
+/* RULES */
+.rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.rule-card{background:var(--white);border:1px solid var(--g2);border-radius:var(--r);padding:14px 16px;display:flex;gap:10px;align-items:flex-start;}
+.rnum{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;color:var(--primary);background:var(--pl);width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.rtext{font-size:12px;color:var(--g5);line-height:1.7;}
+.rtext strong{color:var(--black);font-weight:500;}
+.chip{display:inline-block;font-size:10px;font-weight:500;padding:1px 5px;border-radius:3px;vertical-align:middle;margin:0 1px;}
+.c-skip{background:var(--g1);color:var(--g4);}
+.c-red{background:var(--red-bg);color:var(--red-tx);}
+.c-ylw{background:var(--ylw-bg);color:var(--ylw-tx);}
+.c-pur{background:var(--pur-bg);color:var(--pur-tx);}
+
+/* FILES */
+.files-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.fcard{background:var(--white);border:1px solid var(--g2);border-radius:var(--r);overflow:hidden;}
+.fcard-head{padding:12px 16px;background:var(--g1);border-bottom:1px solid var(--g2);font-size:12px;font-weight:500;color:var(--g5);}
+.frow{padding:10px 16px;border-bottom:1px solid var(--g1);display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--g5);}
+.frow:last-child{border-bottom:none;}
+.ftag{font-size:10px;font-weight:500;padding:2px 7px;border-radius:4px;flex-shrink:0;}
+.t-blue{background:#DBEAFE;color:#1D4ED8;}
+.t-green{background:var(--grn-bg);color:var(--grn-tx);}
+.t-gray{background:var(--g1);color:var(--g4);}
+.tbl-wrap{background:var(--white);border:1px solid var(--g2);border-radius:var(--r);overflow:hidden;}
+.tbl-head{padding:12px 16px;background:var(--g1);border-bottom:1px solid var(--g2);font-size:12px;font-weight:500;color:var(--g5);}
+table{width:100%;border-collapse:collapse;}
+th{text-align:left;padding:8px 16px;font-size:10px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--g3);border-bottom:1px solid var(--g2);}
+td{padding:10px 16px;font-size:12px;color:var(--g5);border-bottom:1px solid var(--g1);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--bg);}
+.cltr{font-family:'DM Sans',monospace;font-weight:500;color:var(--primary);background:var(--pl);padding:1px 6px;border-radius:4px;font-size:11px;}
+</style>
+</head>
+<body>
+
+<!-- TOP HEADER -->
+<header class="top-header">
+  <div class="header-left">
+    <div class="header-brand">the J.Soo</div>
+    <div class="header-divider"></div>
+    <span class="gen-label">W컨셉 재고 입력 엑셀 생성기</span>
+  </div>
+  <div class="tab-bar">
+    <div class="tab active" onclick="showPage('upload',this)">📤 파일 업로드 &amp; 결과</div>
+    <div class="tab" onclick="showPage('guide',this)">📋 작업 규칙</div>
+    <div class="tab" onclick="showPage('files',this)">📁 파일 안내</div>
+  </div>
+  <div class="header-date">직원 배포용</div>
+</header>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- 탭1: 업로드 & 결과 -->
+  <div class="page active" id="page-upload">
+    <div class="ph">
+      <div class="eyebrow">Step 1 · 파일 업로드</div>
+      <h1 class="ptitle">파일 3개 업로드 후 실행</h1>
+      <p class="pdesc">셀메이트 CSV, SBR 선주문, W컨셉 재고관리 파일을 업로드하면 자동으로 계산하고 엑셀 파일을 다운로드할 수 있습니다.</p>
+    </div>
+
+    <div class="upload-grid">
+      <div class="upload-box" id="box-sm">
+        <input type="file" accept=".csv" onchange="loadFile('sm',this)">
+        <div class="ub-icon">📊</div>
+        <div class="ub-label">셀메이트 재고</div>
+        <div class="ub-hint">stk_stockList_날짜.csv</div>
+        <div class="ub-fname" id="fname-sm"></div>
+      </div>
+      <div class="upload-box" id="box-sbr">
+        <input type="file" accept=".xlsx,.xls" onchange="loadFile('sbr',this)">
+        <div class="ub-icon">📋</div>
+        <div class="ub-label">SBR 선주문 파일</div>
+        <div class="ub-hint">SBR210L_날짜.xlsx</div>
+        <div class="ub-fname" id="fname-sbr"></div>
+      </div>
+      <div class="upload-box" id="box-wc">
+        <input type="file" accept=".xlsx,.xls" onchange="loadFile('wc',this)">
+        <div class="ub-icon">🗂️</div>
+        <div class="ub-label">W컨셉 재고관리</div>
+        <div class="ub-hint">재고관리_번호.xlsx</div>
+        <div class="ub-fname" id="fname-wc"></div>
+      </div>
+    </div>
+
+    <button class="btn-run" id="run-btn" onclick="runProcess()" disabled>▶ 재고 업데이트 실행</button>
+    <div class="status-bar" id="status-bar"></div>
+
+    <!-- 결과 영역 -->
+    <div class="result-area" id="result-area">
+      <div class="result-header">
+        <div>
+          <div class="eyebrow">Step 2 · 결과 확인</div>
+          <div class="result-title">작업 결과</div>
+        </div>
+        <div class="dl-btns">
+          <button class="btn-dl btn-dl-sub" onclick="downloadWC()">⬇ W컨셉_업데이트.xlsx</button>
+          <button class="btn-dl btn-dl-main" onclick="downloadFinal()">⬇ 재고관리_최종.xlsx</button>
+        </div>
+      </div>
+
+      <div class="info-note">
+        💡 <strong>재고관리_최종.xlsx</strong>는 W컨셉에 업로드하는 파일이 아닙니다. 원본 재고관리 파일에 검증/현재재고/미발송수/선주문수량/가용재고 5개 열이 추가된 <strong>내부 검수용</strong> 파일이에요. W컨셉 업로드는 <strong>W컨셉_업데이트.xlsx</strong>를 사용하세요.
+      </div>
+
+      <div style="margin-top:20px;">
+        <div class="stat-row">
+          <div class="stat-card hi"><div class="s-num" id="r-updated">-</div><div class="s-lbl">재고 업데이트</div></div>
+          <div class="stat-card"><div class="s-num" id="r-unpause">-</div><div class="s-lbl">미품절→품절행 반영</div></div>
+          <div class="stat-card"><div class="s-num" id="r-reserve">-</div><div class="s-lbl">예약배송 변경</div></div>
+          <div class="stat-card"><div class="s-num" id="r-immediate">-</div><div class="s-lbl">바로배송 변경</div></div>
+        </div>
+
+        <div class="result-grid">
+          <div class="card">
+            <div class="card-head">
+              <span class="badge badge-pur"><span class="bdot"></span>예약배송으로 변경할 상품</span>
+              <span class="card-cnt" id="cnt-reserve">0건</span>
+            </div>
+            <div id="list-reserve"></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <span class="badge badge-ylw"><span class="bdot"></span>바로배송으로 변경할 상품</span>
+              <span class="card-cnt" id="cnt-immediate">0건</span>
+            </div>
+            <div id="list-immediate"></div>
+          </div>
+        </div>
+
+        <div class="skip-grid">
+          <div class="skip-card"><div class="sk-num" id="r-sold">-</div><div class="sk-lbl">품절 스킵<br>(셀메이트 품절)</div></div>
+          <div class="skip-card"><div class="sk-num" id="r-same">-</div><div class="sk-lbl">재고 동일<br>(변동 없음)</div></div>
+          <div class="skip-card"><div class="sk-num" id="r-margin">-</div><div class="sk-lbl">마진율 1%<br>스킵</div></div>
+          <div class="skip-card"><div class="sk-num" id="r-keyword">-</div><div class="sk-lbl">마르셀 실키 반목 T<br>스킵</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 탭2: 작업 규칙 -->
+  <div class="page" id="page-guide">
+    <div class="ph">
+      <div class="eyebrow">Work Rules</div>
+      <h1 class="ptitle">작업 규칙 · 12가지</h1>
+      <p class="pdesc">파일 3개를 업로드하면 아래 규칙으로 자동 처리됩니다.</p>
+    </div>
+    <div class="rules-grid">
+      <div class="rule-card"><div class="rnum">1</div><div class="rtext">셀메이트 재고 CSV, SBR 선주문 파일, W컨셉 재고관리 파일 <strong>3개를 입력</strong>받아 KR재고수량을 자동 업데이트해줘.</div></div>
+      <div class="rule-card"><div class="rnum">2</div><div class="rtext"><strong>가용재고</strong> = 현재재고 − 미발송수 + SBR 선주문 잔여수량. SBR에 없으면 선주문수량 0으로 처리해줘.</div></div>
+      <div class="rule-card"><div class="rnum">3</div><div class="rtext"><span class="chip c-skip">스킵</span> <strong>셀메이트 품절 / 마진율 1% / 재고 동일</strong> 시 스킵. 단 셀메이트 <strong>미품절</strong>이면 W컨셉 품절이어도 재고 반영해줘.</div></div>
+      <div class="rule-card"><div class="rnum">4</div><div class="rtext">M열 오른쪽에 <strong>검증 / 현재재고 / 미발송수 / 선주문수량 / 가용재고</strong> 5열 삽입. 변경 셀은 <span class="chip c-red">빨간색 Bold</span>.</div></div>
+      <div class="rule-card"><div class="rnum">5</div><div class="rtext">예약상품 + 실재고 &gt; 0 → <span class="chip c-ylw">바로배송으로 변경</span>, 일반상품 + 실재고 &lt; 0 → <span class="chip c-pur">예약배송으로 변경</span>.</div></div>
+      <div class="rule-card"><div class="rnum">6</div><div class="rtext">삽입한 5개 열의 <strong>1행 헤더</strong>를 <span class="chip c-red">연빨간색 배경</span>으로 칠해줘. 확인 후 직접 삭제할 열이야.</div></div>
+      <div class="rule-card"><div class="rnum">7</div><div class="rtext"><strong>1행에 필터</strong>를 걸어줘.</div></div>
+      <div class="rule-card"><div class="rnum">8</div><div class="rtext"><strong>1행 고정</strong> + 모든 열 너비를 가장 긴 글자 기준으로 <strong>자동 조절</strong>해줘.</div></div>
+      <div class="rule-card"><div class="rnum">9</div><div class="rtext">전체 글자체 <strong>Calibri</strong>, <strong>9pt</strong>로 통일해줘.</div></div>
+      <div class="rule-card"><div class="rnum">10</div><div class="rtext">작업 후 <strong>[예약배송으로 변경할 상품]</strong>, <strong>[바로배송으로 변경할 상품]</strong>을 상품명·옵션 한 줄씩 표시. 없으면 "없음.", 중복 상품명 제거.</div></div>
+      <div class="rule-card"><div class="rnum">11</div><div class="rtext"><strong>재고관리_최종.xlsx</strong>(내부 검수용)와 함께 <strong>W컨셉_업데이트.xlsx</strong>(W컨셉 업로드용)도 생성. 변경 행만 담고 <strong>E, F, H, I열 비워</strong>둬.</div></div>
+      <div class="rule-card"><div class="rnum">12</div><div class="rtext">상품명에 <strong>"마르셀 실키 반목 T"</strong> 포함 시 항상 <span class="chip c-skip">스킵</span>해줘.</div></div>
+    </div>
+  </div>
+
+  <!-- 탭3: 파일 안내 -->
+  <div class="page" id="page-files">
+    <div class="ph">
+      <div class="eyebrow">File Guide</div>
+      <h1 class="ptitle">파일 안내</h1>
+      <p class="pdesc">입력 3개 업로드 → 결과 화면 표시 + 엑셀 2개 다운로드.</p>
+    </div>
+    <div class="files-cols">
+      <div class="fcard">
+        <div class="fcard-head">📥 입력 파일 (3개 업로드)</div>
+        <div class="frow">stk_stockList_날짜.csv <span class="ftag t-blue">셀메이트 재고</span></div>
+        <div class="frow">SBR210L_날짜.xlsx <span class="ftag t-blue">선주문 파일</span></div>
+        <div class="frow">재고관리_번호.xlsx <span class="ftag t-blue">W컨셉 양식</span></div>
+      </div>
+      <div class="fcard">
+        <div class="fcard-head">📤 출력 파일 (버튼으로 다운로드)</div>
+        <div class="frow">재고관리_최종.xlsx <span class="ftag t-gray">내부 검수용</span></div>
+        <div class="frow">W컨셉_업데이트.xlsx <span class="ftag t-green">W컨셉 업로드용 ✓</span></div>
+      </div>
+    </div>
+    <div class="tbl-wrap" style="margin-bottom:14px;">
+      <div class="tbl-head">📋 재고관리_최종 — 삽입 열 구조 (N~R열, 연빨간 헤더) · 내부 검수용</div>
+      <table>
+        <thead><tr><th>열</th><th>항목명</th><th>내용</th><th>비고</th></tr></thead>
+        <tbody>
+          <tr><td><span class="cltr">N</span></td><td>검증</td><td>바로배송 / 예약배송 변경 여부</td><td><span class="chip c-ylw">연노란</span> <span class="chip c-pur">연보라</span></td></tr>
+          <tr><td><span class="cltr">O</span></td><td>현재재고</td><td>셀메이트 현재재고 raw data</td><td>검수 후 삭제</td></tr>
+          <tr><td><span class="cltr">P</span></td><td>미발송수</td><td>미발송 주문 수 raw data</td><td>검수 후 삭제</td></tr>
+          <tr><td><span class="cltr">Q</span></td><td>선주문수량</td><td>SBR 잔여수량 raw data</td><td>검수 후 삭제</td></tr>
+          <tr><td><span class="cltr">R</span></td><td>가용재고</td><td>최종 가용재고 (= O − P + Q)</td><td>검수 후 삭제</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="fcard">
+      <div class="fcard-head">➕ W컨셉 재고 입력 엑셀 생성기 — 헤더 버튼에서 다운로드</div>
+      <div class="frow">W컨셉 업로드용 빈 양식 파일을 바로 다운로드합니다. <span class="ftag t-green">빈 양식 즉시 생성</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const FILES={sm:null,sbr:null,wc:null};
+let G_RESULT=null, G_WC_RAW=null, G_UPDATE_ROWS=[];
+
+const KO_EN={'아이보리':'ivory','블랙':'black','블루':'blue','그레이':'gray','크림':'cream','베이지':'beige','옐로우':'yellow','핑크':'pink','민트':'mint','소라':'sky blue','모카':'mocha','브라운':'brown','네이비':'navy','차콜':'charcoal','연베이지':'light beige','카키브라운':'khaki brown','핑크베이지':'pink beige','인디핑크':'indi pink','페탈핑크':'petal pink','카멜':'camel','미드나잇블랙':'midnight black','소프트크림':'soft cream','클래식블랙':'classic black','샌드베이지':'sand beige','세렌블루':'serene blue','모카무스':'mocha mousse','문네이비':'moon navy','살구핑크':'apricot pink','레몬옐로우':'lemon yellow','레몬엘로우':'lemon yellow'};
+const SKIP_KW='마르셀 실키 반목 t';
+
+function stripBrackets(s){return String(s||'').replace(/\[.*?\]/g,'').trim();}
+function normName(s){return stripBrackets(s).toLowerCase().trim().replace(/\s+/g,' ');}
+function koToEn(s){return KO_EN[String(s||'').trim()]||String(s||'').trim().toLowerCase();}
+function nc(s){return String(s||'').trim().toLowerCase().replace(/grey/g,'gray');}
+function makeKey(name,opt){const base=normName(name).replace(/_.*$/,'').trim();const parts=String(opt||'').trim().split(',').map(p=>p.trim());const color=nc(koToEn(parts[0]||''));const size=(parts[1]||'free').toLowerCase().trim();return`${base}|||${color}|||${size}`;}
+function wcKey(name,opt1){const base=normName(name).replace(/_.*$/,'').trim();const o=String(opt1||'').trim();const m=o.match(/^(.+?)\s*\((.+?)\)$/);const color=nc(m?m[1].trim().toLowerCase():o.toLowerCase());const size=m?m[2].trim().toLowerCase():'free';return`${base}|||${color}|||${size}`;}
+
+// ── 빈 양식 다운로드 ──
+function downloadBlankForm(){
+  const wb=XLSX.utils.book_new();
+  const wsData=[
+    ['*상품정보는 재고관리내역을 엑셀파일을 다운로드 받아 확인하시어 입력해주세요  ※ 최대 100개까지 가능합니다.','','','','','','','',''],
+    ['*통합재고설정 상품에  US/CN 재고 수량이 입력하시면 엑셀업로드가 되지 않습니다','','','','','','','',''],
+    ['상품코드','옵션 코드','상품명','옵션1','옵션2','옵션3','KR수량','US수량','CN수량'],
+  ];
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[{wch:14},{wch:22},{wch:58},{wch:11},{wch:8},{wch:8},{wch:9},{wch:9},{wch:9}];
+  XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
+  XLSX.writeFile(wb,'WCK_ManageQTY.xlsx');
+}
+
+// ── 파일 로드 ──
+function loadFile(type,input){
+  const file=input.files[0];if(!file)return;
+  const box=document.getElementById(`box-${type}`);
+  const fname=document.getElementById(`fname-${type}`);
+  if(type==='sm'){
+    Papa.parse(file,{header:true,encoding:'EUC-KR',complete(res){FILES.sm=res.data.filter(r=>r['상품명']);box.classList.add('done');fname.textContent='✓ '+file.name;checkReady();}});
+  }else{
+    const reader=new FileReader();
+    reader.onload=e=>{const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];FILES[type]=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});box.classList.add('done');fname.textContent='✓ '+file.name;checkReady();};
+    reader.readAsArrayBuffer(file);
+  }
+}
+function checkReady(){document.getElementById('run-btn').disabled=!(FILES.sm&&FILES.sbr&&FILES.wc);}
+
+// ── 메인 처리 ──
+function runProcess(){
+  showStatus('info','⏳ 계산 중입니다...');
+  setTimeout(()=>{
+    try{const r=process();G_RESULT=r;showResult(r);showStatus('success',`✅ 완료! 재고 업데이트 ${r.cntUpdated}건 · 엑셀 다운로드 버튼을 눌러주세요.`);}
+    catch(e){showStatus('error','❌ 오류: '+e.message);console.error(e);}
+  },50);
+}
+
+function process(){
+  const sbrDict={};
+  for(let i=2;i<FILES.sbr.length;i++){const row=FILES.sbr[i];const name=row[4],opt=row[5],qty=row[7];if(!name||name==='상품명')continue;const key=makeKey(name,opt);sbrDict[key]=(sbrDict[key]||0)+(parseInt(qty)||0);}
+  const smGa={},smSil={},smPul={},smCur={},smMi={},smSon={};
+  for(const row of FILES.sm){const cur=parseInt(row['현재재고'])||0;const mi=parseInt(row['미발송주문수'])||0;const key=makeKey(row['상품명'],row['옵션명']);const son=sbrDict[key]||0;smGa[key]=cur-mi+son;smSil[key]=cur-mi;smPul[key]=String(row['품절여부']||'').trim();smCur[key]=cur;smMi[key]=mi;smSon[key]=son;}
+  const wcRows=FILES.wc;G_WC_RAW=[...wcRows];
+  const COL_TYPE=2,COL_PNAME=6,COL_OPT1=7,COL_STATE=10,COL_KR=12,COL_MARGIN=18;
+  let cntUpdated=0,cntSold=0,cntMargin=0,cntSame=0,cntKw=0,cntUnpause=0;
+  const listReserve=[],listImmediate=[];
+  G_UPDATE_ROWS=[];
+  const modRows=wcRows.map(r=>Array.isArray(r)?[...r]:[]);
+  for(let i=1;i<wcRows.length;i++){
+    const row=wcRows[i];
+    const product=String(row[COL_PNAME]||'').trim();const option1=String(row[COL_OPT1]||'').trim();
+    const 상품유형=String(row[COL_TYPE]||'').trim();const 재고상태=String(row[COL_STATE]||'').trim();
+    const 마진율=String(row[COL_MARGIN]||'').trim();const 현재KR=parseInt(row[COL_KR])||0;
+    const 상품코드=row[3];const 옵션코드=row[4];
+    if(!product)continue;
+    if(product.toLowerCase().includes(SKIP_KW)){cntKw++;continue;}
+    if(마진율==='1'){cntMargin++;continue;}
+    let 가용재고,실재고_val,품절여부_val,현재재고_val,미발송_val,선주문_val;
+    const isSet=product.startsWith('[세트]');
+    if(isSet){const info=getSetInfo(product,option1,smGa,smSil,smPul,smCur,smMi,smSon);if(!info)continue;({가용재고,실재고_val,품절여부_val,현재재고_val,미발송_val,선주문_val}=info);}
+    else{let key=wcKey(product,option1);if(!(key in smGa)){const bp=key.split('|||');const kf=`${bp[0]}|||${bp[1]}|||free`;if(!(kf in smGa))continue;key=kf;}가용재고=smGa[key];실재고_val=smSil[key];품절여부_val=smPul[key]||'품절';현재재고_val=smCur[key];미발송_val=smMi[key];선주문_val=smSon[key]||0;}
+    let updated=false;
+    if(재고상태==='품절(재고없음)'){if(품절여부_val==='미품절'){if(현재KR!==가용재고){cntUpdated++;updated=true;}cntUnpause++;}else{cntSold++;continue;}}
+    else{if(현재KR===가용재고){cntSame++;}else{cntUpdated++;updated=true;}}
+    modRows[i][COL_KR]=가용재고;
+    modRows[i]._검증='';modRows[i]._현재재고=현재재고_val;modRows[i]._미발송수=미발송_val;modRows[i]._선주문수량=선주문_val;modRows[i]._가용재고=가용재고;modRows[i]._updated=updated;
+    if(실재고_val!==undefined&&실재고_val!==null){
+      if(상품유형==='예약상품'&&실재고_val>0){modRows[i]._검증='바로배송으로 변경';listImmediate.push({name:product,opt:option1});}
+      else if(상품유형==='일반상품'&&실재고_val<0){modRows[i]._검증='예약배송으로 변경';listReserve.push({name:product,opt:option1});}
+    }
+    if(updated){G_UPDATE_ROWS.push({상품코드,옵션코드,상품명:product,옵션1:option1,KR수량:가용재고});}
+  }
+  G_WC_RAW=modRows;
+  const dedup=arr=>{const s=new Set();return arr.filter(({name})=>{if(s.has(name))return false;s.add(name);return true;});};
+  return{cntUpdated,cntSold,cntMargin,cntSame,cntKw,cntUnpause,listReserve:dedup(listReserve),listImmediate:dedup(listImmediate)};
+}
+
+function getSetInfo(product,option1,smGa,smSil,smPul,smCur,smMi,smSon){
+  const raw=product.replace(/\[세트\]\s*/,'').trim();const comps=raw.split('+').map(s=>s.trim());
+  const m=String(option1||'').trim().match(/^(.+?)\s*\((.+?)\)$/);
+  const color=nc(m?m[1].trim().toLowerCase():String(option1||'').trim().toLowerCase());const size=m?m[2].trim().toLowerCase():'free';
+  const gaL=[],silL=[],pulL=[],curL=[],miL=[],sonL=[];
+  for(const comp of comps){const cb=comp.toLowerCase().replace(/_.*$/,'').trim();let key=`${cb}|||${color}|||${size}`;if(!(key in smGa))key=`${cb}|||${color}|||free`;gaL.push(smGa[key]);silL.push(smSil[key]);pulL.push(smPul[key]||'품절');curL.push(smCur[key]);miL.push(smMi[key]);sonL.push(smSon[key]||0);}
+  if(gaL.some(v=>v===undefined))return null;
+  const 품절여부_val=pulL.some(p=>p==='미품절')?'미품절':'품절';const minIdx=gaL.indexOf(Math.min(...gaL));
+  return{가용재고:Math.min(...gaL),실재고_val:Math.min(...silL.map(v=>v||0)),품절여부_val,현재재고_val:curL[minIdx],미발송_val:miL[minIdx],선주문_val:sonL[minIdx]};
+}
+
+// ── 엑셀 다운로드: 재고관리_최종 ──
+function downloadFinal(){
+  if(!G_WC_RAW){alert('먼저 실행해주세요.');return;}
+  const wb=XLSX.utils.book_new();
+  const headerRow=[...(G_WC_RAW[0]||[])];
+  headerRow.splice(13,0,'검증','현재재고','미발송수','선주문수량','가용재고');
+  const wsData=[headerRow];
+  for(let i=1;i<G_WC_RAW.length;i++){
+    const row=G_WC_RAW[i];if(!row||!row[6])continue;
+    const base=row.slice(0,row.length).filter((_,idx)=>typeof idx==='number');
+    const cleanRow=[];for(let j=0;j<Math.max(base.length,19);j++)cleanRow.push(base[j]!==undefined?base[j]:'');
+    cleanRow.splice(13,0,row._검증||'',row._현재재고!==undefined?row._현재재고:'',row._미발송수!==undefined?row._미발송수:'',row._선주문수량!==undefined?row._선주문수량:'',row._가용재고!==undefined?row._가용재고:'');
+    wsData.push(cleanRow);
+  }
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=wsData[0].map((_,i)=>{let max=10;for(const row of wsData){const v=String(row[i]||'');const len=v.split('').reduce((a,c)=>a+(c.charCodeAt(0)>127?2:1),0);if(len>max)max=len;}return{wch:Math.min(max+2,60)};});
+  XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
+  XLSX.writeFile(wb,'재고관리_최종.xlsx');
+}
+
+// ── 엑셀 다운로드: W컨셉_업데이트 ──
+function downloadWC(){
+  if(!G_UPDATE_ROWS.length){alert('먼저 실행해주세요.');return;}
+  const wb=XLSX.utils.book_new();
+  const wsData=[
+    ['*상품정보는 재고관리내역을 엑셀파일을 다운로드 받아 확인하시어 입력해주세요  ※ 최대 100개까지 가능합니다.','','','','','','','',''],
+    ['*통합재고설정 상품에  US/CN 재고 수량이 입력하시면 엑셀업로드가 되지 않습니다','','','','','','','',''],
+    ['상품코드','옵션 코드','상품명','옵션1','옵션2','옵션3','KR수량','US수량','CN수량'],
+  ];
+  for(const r of G_UPDATE_ROWS)wsData.push([r.상품코드,r.옵션코드,r.상품명,r.옵션1,'','',r.KR수량,'','']);
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[{wch:14},{wch:22},{wch:58},{wch:11},{wch:8},{wch:8},{wch:9},{wch:9},{wch:9}];
+  XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
+  XLSX.writeFile(wb,'W컨셉_업데이트.xlsx');
+}
+
+// ── UI ──
+function showResult(r){
+  document.getElementById('result-area').style.display='block';
+  document.getElementById('r-updated').textContent=r.cntUpdated;document.getElementById('r-unpause').textContent=r.cntUnpause;
+  document.getElementById('r-reserve').textContent=r.listReserve.length;document.getElementById('r-immediate').textContent=r.listImmediate.length;
+  document.getElementById('r-sold').textContent=r.cntSold;document.getElementById('r-same').textContent=r.cntSame;
+  document.getElementById('r-margin').textContent=r.cntMargin;document.getElementById('r-keyword').textContent=r.cntKw;
+  renderList('list-reserve','cnt-reserve',r.listReserve);renderList('list-immediate','cnt-immediate',r.listImmediate);
+}
+function renderList(lid,cid,items){
+  document.getElementById(cid).textContent=items.length+'건';
+  document.getElementById(lid).innerHTML=items.length===0?'<div class="none-text">없음.</div>':items.map(({name,opt})=>`<div class="prow"><span class="pname">${esc(name)}</span><span class="popt">${esc(opt)}</span></div>`).join('');
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function showStatus(type,msg){const b=document.getElementById('status-bar');b.className='status-bar '+type;b.textContent=msg;b.style.display='block';}
+function showPage(id,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');el.classList.add('active');}
+</script>
+</body>
+</html>
