@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>W컨셉 상페코드 자동 생성기</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #f4f8fb;
+    --surface: #ffffff;
+    --surface2: #eef3f8;
+    --border: #dce8f0;
+    --accent: #7ab8d8;
+    --accent2: #a0cfe8;
+    --accent-dark: #4a90b8;
+    --text: #2c3e50;
+    --text-dim: #7a92a8;
+    --text-dimmer: #b8cdd8;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+  }
+
+  /* Soft bg pattern */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(122,184,216,0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(122,184,216,0.07) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent-dark);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--text);
+  }
+  h1 span { color: var(--accent-dark); }
+  .subtitle {
+    margin-top: 8px;
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 12px rgba(122,184,216,0.08);
+  }
+  .card-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent-dark);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  /* Season input */
+  .season-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+  }
+  .field {
+    flex: 1;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+  input[type="text"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(122,184,216,0.15);
+  }
+  input[type="text"]::placeholder { color: var(--text-dimmer); }
+
+  /* Upload area */
+  .upload-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .upload-area:hover, .upload-area.drag-over {
+    border-color: var(--accent);
+    background: rgba(122,184,216,0.06);
+  }
+  .upload-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .upload-text {
+    font-size: 14px;
+    color: var(--text-dim);
+  }
+  .upload-text strong {
+    color: var(--accent-dark);
+    font-weight: 500;
+  }
+  .upload-hint {
+    font-size: 11px;
+    color: var(--text-dimmer);
+    margin-top: 6px;
+    font-family: 'DM Mono', monospace;
+  }
+  input[type="file"] {
+    position: absolute; inset: 0;
+    opacity: 0; cursor: pointer;
+    width: 100%; height: 100%;
+  }
+
+  /* File loaded state */
+  .file-loaded {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(122,184,216,0.08);
+    border: 1px solid rgba(122,184,216,0.3);
+    border-radius: 8px;
+    margin-top: 12px;
+  }
+  .file-loaded-icon { font-size: 20px; }
+  .file-loaded-name { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent-dark); flex: 1; }
+  .file-loaded-info { font-size: 12px; color: var(--text-dim); }
+  .btn-clear {
+    background: none; border: none;
+    color: var(--text-dimmer); cursor: pointer;
+    font-size: 18px; line-height: 1;
+    padding: 2px 6px;
+    transition: color 0.2s;
+  }
+  .btn-clear:hover { color: #ff6b6b; }
+
+  /* Preview table */
+  .preview-wrap {
+    margin-top: 16px;
+    overflow-x: auto;
+  }
+  .preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+  }
+  .preview-table th {
+    background: var(--surface2);
+    color: var(--accent-dark);
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .preview-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .preview-table tr:hover td { background: var(--surface2); color: var(--text); }
+  .tag-color {
+    display: inline-block;
+    background: rgba(122,184,216,0.15);
+    color: var(--accent-dark);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
+  }
+  .tag-code {
+    display: inline-block;
+    background: rgba(122,184,216,0.1);
+    color: var(--accent-dark);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
+  }
+
+  /* Process button */
+  .btn-process {
+    width: 100%;
+    background: var(--accent-dark);
+    color: #ffffff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 16px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+    margin-top: 8px;
+    box-shadow: 0 4px 14px rgba(74,144,184,0.25);
+  }
+  .btn-process:hover { background: #3a80a8; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(74,144,184,0.35); }
+  .btn-process:active { transform: translateY(0); }
+  .btn-process:disabled {
+    background: var(--border);
+    color: var(--text-dimmer);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* Result */
+  .result-card {
+    background: var(--surface);
+    border: 1px solid rgba(122,184,216,0.4);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 16px;
+    animation: fadeIn 0.4s ease;
+    box-shadow: 0 4px 20px rgba(122,184,216,0.12);
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .result-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .stat-box {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--accent-dark);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .btn-download {
+    width: 100%;
+    background: transparent;
+    color: var(--accent-dark);
+    border: 1.5px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-download:hover {
+    background: rgba(122,184,216,0.1);
+    border-color: var(--accent-dark);
+  }
+
+  /* Log */
+  .log-wrap {
+    margin-top: 16px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .log-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+  }
+  .log-item .log-row { color: var(--accent-dark); min-width: 50px; }
+  .log-item .log-product { color: var(--text); flex: 1; }
+  .log-item .log-nums { color: var(--accent-dark); }
+
+  /* Info box */
+  .info-box {
+    background: rgba(122,184,216,0.06);
+    border: 1px solid rgba(122,184,216,0.2);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 16px;
+  }
+  .info-box p {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  .info-box strong { color: var(--accent-dark); font-weight: 500; }
+  .info-box code {
+    background: var(--surface2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent-dark);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--surface2); }
+  ::-webkit-scrollbar-thumb { background: var(--accent2); border-radius: 2px; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="header-tag">W컨셉 자동화 도구 v2.0</div>
+    <h1>W컨셉 <span>코드 자동 생성기</span></h1>
+    <p class="subtitle">엑셀 파일을 업로드하면 상페 코드(Z열)를 자동으로 채워드립니다</p>
+  </header>
+
+  <!-- Step 1: Season -->
+  <div class="card">
+    <div class="card-title">Step 01 — 시즌 코드 입력</div>
+    <div class="season-row">
+      <div class="field">
+        <label>SEASON CODE</label>
+        <input type="text" id="seasonInput" placeholder="예: 26spring, 26summer, 27winter" />
+      </div>
+    </div>
+    <div class="info-box" style="margin-top:14px">
+      <p>URL 경로에 사용되는 시즌 코드를 입력하세요.<br>
+      예) <code>https://suyoun6355.../web/wconcept/<strong>26summer</strong>/308128460/photo_1.jpg</code></p>
+    </div>
+  </div>
+
+  <!-- Step 2: Upload -->
+  <div class="card">
+    <div class="card-title">Step 02 — 엑셀 파일 업로드</div>
+    <div class="upload-area" id="uploadArea">
+      <input type="file" id="fileInput" accept=".xlsx,.xls" />
+      <span class="upload-icon">📊</span>
+      <div class="upload-text"><strong>클릭하거나 파일을 드래그</strong>하세요</div>
+      <div class="upload-hint">.xlsx / .xls 파일 지원</div>
+    </div>
+    <div id="fileInfo" class="hidden">
+      <div class="file-loaded">
+        <span class="file-loaded-icon">✅</span>
+        <span class="file-loaded-name" id="fileName">-</span>
+        <span class="file-loaded-info" id="fileRows">-</span>
+        <button class="btn-clear" id="clearFile">×</button>
+      </div>
+      <div class="preview-wrap">
+        <table class="preview-table" id="previewTable">
+          <thead>
+            <tr>
+              <th>행</th>
+              <th>상품명</th>
+              <th>상품코드 (F)</th>
+              <th>컬러 (I)</th>
+              <th>포토수 (W)</th>
+              <th>디테일수 (X)</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Process -->
+  <div class="card">
+    <div class="card-title">Step 03 — 생성 및 다운로드</div>
+    <button class="btn-process" id="processBtn" disabled>
+      ⚡ 상페코드 자동 생성하기
+    </button>
+  </div>
+
+  <!-- Result -->
+  <div class="result-card hidden" id="resultCard">
+    <div class="card-title">생성 완료</div>
+    <div class="result-stats">
+      <div class="stat-box">
+        <div class="stat-num" id="statTotal">0</div>
+        <div class="stat-label">처리된 행</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="statProducts">0</div>
+        <div class="stat-label">상품 그룹</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="statSkipped">0</div>
+        <div class="stat-label">건너뜀</div>
+      </div>
+    </div>
+    <div class="log-wrap" id="logWrap"></div>
+    <button class="btn-download" id="downloadBtn">
+      <span>⬇</span> 완성된 엑셀 다운로드
+    </button>
+  </div>
+
+  <!-- Guide -->
+  <div class="card">
+    <div class="card-title">엑셀 구조 안내</div>
+    <div class="info-box" style="margin-top: 0;">
+      <p>
+        <strong>F열</strong> — 상품코드 (숫자) · <strong>H열</strong> — 상품명 (병합셀 가능) · <strong>I열</strong> — 컬러<br>
+        <strong>W열</strong> — 포토 개수 (각 행별, 미입력 시 10개 디폴트)<br>
+        <strong>X열</strong> — 디테일컷 개수 (상품 첫 행에 입력, 미입력 시 컬러 수)<br>
+        <strong>Z열</strong> — 상페코드 출력 (자동으로 채워짐)<br><br>
+        <strong>생성 규칙:</strong> detail_1~N컬러 → 컬러 텍스트 포함 / 나머지 → 이미지만
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const BASE_URL = "https://suyoun6355.openhost.cafe24.com/web/wconcept";
+
+let workbook = null;
+let parsedData = null;
+let processedWB = null;
+let storedArrayBuffer = null;
+
+// Drag & drop
+const uploadArea = document.getElementById('uploadArea');
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+document.getElementById('clearFile').addEventListener('click', () => {
+  workbook = null; parsedData = null; storedArrayBuffer = null;
+  document.getElementById('fileInfo').classList.add('hidden');
+  document.getElementById('fileInput').value = '';
+  document.getElementById('processBtn').disabled = true;
+  document.getElementById('resultCard').classList.add('hidden');
+});
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      storedArrayBuffer = e.target.result.slice(0);
+      workbook = XLSX.read(storedArrayBuffer, { type: 'array', cellStyles: true });
+      parsedData = parseWorkbook(workbook);
+      showPreview(file.name, parsedData);
+      document.getElementById('processBtn').disabled = false;
+    } catch(err) {
+      alert('파일 읽기 오류: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function getCellValue(ws, row, col) {
+  const addr = XLSX.utils.encode_cell({ r: row - 1, c: col - 1 });
+  const cell = ws[addr];
+  if (!cell) return null;
+  return cell.v !== undefined ? cell.v : null;
+}
+
+function parseWorkbook(wb) {
+  const ws = wb.Sheets['W컨셉작업용'];
+  if (!ws) throw new Error("'W컨셉작업용' 시트를 찾을 수 없습니다.");
+
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const maxRow = range.e.r + 1;
+
+  // 헤더 행(row 2)에서 열 번호 동적으로 찾기
+  let colF=6, colH=8, colI=9, colW=23, colX=24;
+  for (let c = 1; c <= range.e.c + 1; c++) {
+    const v = getCellValue(ws, 2, c);
+    if (!v) continue;
+    const s = String(v).trim();
+    if (s === 'W상품 번호' || s === 'W상품번호') colF = c;
+    if (s === '상품명') colH = c;
+    if (s === '색상' || s === '컬러') colI = c;
+    if (s.includes('포토') && s.includes('갯수')) colW = c;
+    if (s.includes('디테일컷') && s.includes('갯수')) colX = c;
+  }
+  // F열은 헤더가 'W상품 번호'이지만 실제 파이썬 기준 6번째 열이므로 고정
+  colF = 6; colH = 8; colI = 9;
+
+  console.log(`열 매핑 - F:${colF} H:${colH} I:${colI} W(포토):${colW} X(디테일):${colX}`);
+
+  // 병합셀 맵 (H열 0-indexed = colH-1)
+  const mergedMap = {};
+  if (ws['!merges']) {
+    ws['!merges'].forEach(m => {
+      if (m.s.c === colH - 1) {
+        for (let r = m.s.r; r <= m.e.r; r++) {
+          mergedMap[r + 1] = m.s.r + 1;
+        }
+      }
+    });
+  }
+
+  // 그룹 구성
+  const groups = {};
+  let currentGroupStart = null;
+
+  for (let row = 3; row <= maxRow; row++) {
+    const f = getCellValue(ws, row, colF);
+    const h = getCellValue(ws, row, colH);
+    const i = getCellValue(ws, row, colI);
+
+    if (!f && !h && !i) continue;
+
+    if (h !== null && h !== undefined) {
+      currentGroupStart = row;
+      groups[currentGroupStart] = [];
+    } else if (mergedMap[row]) {
+      currentGroupStart = mergedMap[row];
+    }
+
+    if (currentGroupStart !== null) {
+      if (!groups[currentGroupStart]) groups[currentGroupStart] = [];
+      groups[currentGroupStart].push(row);
+    }
+  }
+
+  // 각 그룹 데이터 수집
+  const result = [];
+  for (const [startRow, rows] of Object.entries(groups)) {
+    const colors = rows.map(r => {
+      const c = getCellValue(ws, r, colI);
+      return c ? String(c).trim() : null;
+    }).filter(Boolean);
+
+    const nDetailRaw = getCellValue(ws, parseInt(startRow), colX);
+    const nDetail = nDetailRaw ? parseInt(nDetailRaw) : null;
+
+    for (const row of rows) {
+      const f = getCellValue(ws, row, colF);
+      const h = getCellValue(ws, row, colH) || (mergedMap[row] ? getCellValue(ws, mergedMap[row], colH) : null);
+      const nPhotoRaw = getCellValue(ws, row, colW);
+      const nPhoto = nPhotoRaw ? parseInt(nPhotoRaw) : 10;
+
+      console.log(`row ${row}: F=${f}, 포토=${nPhotoRaw}→${nPhoto}, 디테일=${nDetailRaw}→${nDetail}`);
+
+      result.push({
+        row,
+        productCode: f,
+        productName: h,
+        color: getCellValue(ws, row, colI),
+        nPhoto,
+        nDetail: nDetail || colors.length || 0,
+        colors,
+        groupStart: parseInt(startRow),
+        isNumericCode: f !== null && /^\d+$/.test(String(f).replace(/\.0$/, '').trim())
+      });
+    }
+  }
+
+  return result;
+}
+
+function makeHTML(season, productCode, colors, nPhoto, nDetail) {
+  const code = String(productCode).replace(/\.0$/, '').trim();
+  const nColors = colors.length;
+  const lines = [];
+
+  lines.push('<div>');
+  lines.push(`<img src="${BASE_URL}/${season}/common/top.jpg"><br><br>`);
+
+  for (let i = 1; i <= nPhoto; i++) {
+    lines.push(`<img src="${BASE_URL}/${season}/${code}/photo_${i}.jpg"><br><br>`);
+  }
+
+  for (let i = 1; i <= nDetail; i++) {
+    const img = `<img src="${BASE_URL}/${season}/${code}/detail_${i}.jpg">`;
+    if (i <= nColors) {
+      const color = colors[i - 1].trim();
+      lines.push(`${img}</div><div style="text-align: center;" align="center">${color}</div><br><div>`);
+    } else {
+      lines.push(`${img}<br><br>`);
+    }
+  }
+
+  lines.push(`<img src="${BASE_URL}/${season}/${code}/about.jpg">`);
+  lines.push(`<img src="${BASE_URL}/${season}/${code}/size.jpg">`);
+  lines.push(`<img src="${BASE_URL}/${season}/${code}/color.jpg">`);
+  lines.push(`<img src="${BASE_URL}/${season}/common/refund.jpg">`);
+  lines.push('</div>');
+
+  return lines.join('\n') + '\n';
+}
+
+function showPreview(fileName, data) {
+  document.getElementById('fileName').textContent = fileName;
+  document.getElementById('fileRows').textContent = `총 ${data.length}행`;
+  document.getElementById('fileInfo').classList.remove('hidden');
+
+  const tbody = document.getElementById('previewBody');
+  tbody.innerHTML = '';
+  const show = data.filter(d => d.isNumericCode).slice(0, 10);
+  show.forEach(d => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${d.row}</td>
+      <td>${d.productName ? String(d.productName).slice(0, 12) : '<span style="color:var(--text-dimmer)">-</span>'}</td>
+      <td><span class="tag-code">${d.productCode}</span></td>
+      <td><span class="tag-color">${d.color || '-'}</span></td>
+      <td>${d.nPhoto}</td>
+      <td>${d.nDetail}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  if (data.filter(d => d.isNumericCode).length > 10) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="6" style="color:var(--text-dimmer); text-align:center; font-size:11px;">... 외 ${data.filter(d=>d.isNumericCode).length - 10}행</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+document.getElementById('processBtn').addEventListener('click', () => {
+  const season = document.getElementById('seasonInput').value.trim();
+  if (!season) { alert('시즌 코드를 입력해주세요.'); return; }
+  if (!parsedData || !storedArrayBuffer) { alert('파일을 먼저 업로드해주세요.'); return; }
+
+  // storedArrayBuffer로 워크북 재생성
+  processedWB = XLSX.read(storedArrayBuffer.slice(0), { type: 'array', cellStyles: true });
+  const ws = processedWB.Sheets['W컨셉작업용'];
+
+  let count = 0, skipped = 0;
+  const logItems = [];
+  const groupCount = new Set();
+
+  parsedData.forEach(d => {
+    if (!d.isNumericCode) { skipped++; return; }
+    const html = makeHTML(season, d.productCode, d.colors, d.nPhoto, d.nDetail);
+    const addr = XLSX.utils.encode_cell({ r: d.row - 1, c: 25 }); // Z열
+    ws[addr] = {
+      t: 's',
+      v: html,
+      s: {
+        fill: { patternType: 'solid', fgColor: { rgb: 'D6EAF8' } }
+      }
+    };
+    count++;
+    groupCount.add(d.groupStart);
+    logItems.push({ row: d.row, name: d.productName || '-', color: d.color, nPhoto: d.nPhoto, nDetail: d.nDetail });
+  });
+
+  document.getElementById('statTotal').textContent = count;
+  document.getElementById('statProducts').textContent = groupCount.size;
+  document.getElementById('statSkipped').textContent = skipped;
+
+  const logWrap = document.getElementById('logWrap');
+  logWrap.innerHTML = logItems.slice(0, 30).map(l => `
+    <div class="log-item">
+      <span class="log-row">row ${l.row}</span>
+      <span class="log-product">${String(l.name || '').slice(0, 14)} <span style="color:var(--accent-dark)">${l.color || ''}</span></span>
+      <span class="log-nums">📷${l.nPhoto} 🎨${l.nDetail}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('resultCard').classList.remove('hidden');
+  document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  if (!processedWB) return;
+  const season = document.getElementById('seasonInput').value.trim() || 'output';
+  const fileName = `W컨셉_${season}_상페코드완성.xlsx`;
+  XLSX.writeFile(processedWB, fileName, { cellStyles: true });
+});
+</script>
+</body>
+</html>
