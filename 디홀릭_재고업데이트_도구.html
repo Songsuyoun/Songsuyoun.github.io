@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>더제이수 · 디홀릭 재고 업데이트</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+:root {
+  --bg:#f5f4f0;--surface:#fff;--surface2:#f9f8f5;--border:#e8e5de;--border2:#d4cfc4;
+  --accent:#8b6f47;--accent2:#c4a882;--text:#2a2520;--text-sub:#6b5f52;--text-dim:#aaa098;
+  --red:#c0392b;--red-bg:#fdf3f2;--red-bd:#f5c6c2;
+  --blue:#2563a8;--blue-bg:#eff5fc;--blue-bd:#bdd4ef;
+  --green:#1e7e5a;--green-bg:#edf7f3;--green-bd:#a8d9c6;
+  --yellow:#92620a;--yellow-bg:#fef9ee;--yellow-bd:#f0d89a;
+  --gray-bg:#f2f0eb;--radius:12px;--shadow:0 2px 12px rgba(0,0,0,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6;}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 40px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 4px rgba(0,0,0,.05);position:sticky;top:0;z-index:100;}
+.brand{font-size:15px;font-weight:700;color:var(--accent);letter-spacing:-.3px;}
+.brand span{color:var(--text-sub);font-weight:400;font-size:13px;margin-left:8px;}
+main{max-width:1060px;margin:0 auto;padding:36px 24px;}
+.section-title{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px 28px;margin-bottom:20px;box-shadow:var(--shadow);}
+.upload-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.upload-box{border:1.5px dashed var(--border2);border-radius:10px;padding:20px 16px;cursor:pointer;transition:all .2s;text-align:center;background:var(--surface2);display:block;}
+.upload-box:hover{border-color:var(--accent2);background:#fdf9f4;}
+.upload-box.loaded{border-style:solid;border-color:var(--green);background:var(--green-bg);}
+.upload-box.error{border-color:var(--red);background:var(--red-bg);}
+.upload-icon{font-size:26px;margin-bottom:8px;}
+.upload-label{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.upload-hint{font-size:11px;color:var(--text-dim);font-family:'DM Mono',monospace;}
+.upload-status{font-size:11px;margin-top:8px;color:var(--text-dim);font-family:'DM Mono',monospace;word-break:break-all;}
+.upload-box.loaded .upload-status{color:var(--green);}
+.upload-box.error .upload-status{color:var(--red);}
+input[type=file]{display:none;}
+.rules-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:4px;}
+.rule-item{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-sub);line-height:1.5;}
+.rule-num{min-width:22px;height:22px;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;}
+.rule-item b{color:var(--text);font-weight:600;display:block;margin-bottom:2px;}
+.run-area{text-align:center;padding:8px 0;}
+.btn-run{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:13px 52px;font-size:14px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .2s;letter-spacing:-.3px;box-shadow:0 3px 12px rgba(139,111,71,.3);}
+.btn-run:disabled{background:var(--border2);color:var(--text-dim);cursor:not-allowed;box-shadow:none;}
+.btn-run:not(:disabled):hover{background:#7a5f3a;transform:translateY(-2px);box-shadow:0 6px 20px rgba(139,111,71,.35);}
+.log-box{background:#fafaf8;border:1px solid var(--border);border-radius:8px;padding:14px 18px;font-family:'DM Mono',monospace;font-size:11.5px;line-height:1.9;max-height:180px;overflow-y:auto;margin:14px 0 0;display:none;color:var(--text-sub);}
+.log-box.show{display:block;}
+.log-ok{color:var(--green);}.log-info{color:var(--accent);}.log-warn{color:var(--yellow);}.log-err{color:var(--red);}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;}
+.stat-card{border-radius:10px;padding:16px 18px;border:1px solid var(--border);}
+.stat-card.c-all{background:var(--surface2);}
+.stat-card.c-red{background:var(--red-bg);border-color:var(--red-bd);}
+.stat-card.c-blue{background:var(--blue-bg);border-color:var(--blue-bd);}
+.stat-card.c-yellow{background:var(--yellow-bg);border-color:var(--yellow-bd);}
+.stat-num{font-size:30px;font-weight:700;line-height:1;font-family:'DM Mono',monospace;}
+.stat-label{font-size:11px;color:var(--text-sub);margin-top:5px;}
+.c-all .stat-num{color:var(--text);}.c-red .stat-num{color:var(--red);}.c-blue .stat-num{color:var(--blue);}.c-yellow .stat-num{color:var(--yellow);}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:14px;}
+.tab-btn{padding:8px 18px;font-size:12px;font-weight:600;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);cursor:pointer;transition:all .15s;font-family:'Noto Sans KR',sans-serif;margin-bottom:-1px;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-btn:hover:not(.active){color:var(--text-sub);}
+.tab-count{display:inline-block;background:var(--gray-bg);border-radius:10px;padding:1px 7px;font-size:10px;font-family:'DM Mono',monospace;margin-left:4px;}
+.tab-btn.active .tab-count{background:var(--accent);color:#fff;}
+.tab-panel{display:none;}.tab-panel.active{display:block;}
+.tbl-wrap{max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;}
+.result-table{width:100%;border-collapse:collapse;font-size:12px;}
+.result-table th{background:var(--surface2);padding:9px 14px;text-align:left;font-weight:600;font-size:11px;color:var(--text-sub);border-bottom:1px solid var(--border);position:sticky;top:0;letter-spacing:.3px;}
+.result-table td{padding:8px 14px;border-bottom:1px solid #f2f0eb;vertical-align:middle;}
+.result-table tr:last-child td{border-bottom:none;}
+.result-table tr:hover td{background:var(--surface2);}
+.result-table tr.row-soldout td{background:var(--blue-bg);}
+.result-table tr.row-soldout:hover td{background:#e4edf8;}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;}
+.badge-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);}
+.badge-blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd);}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);}
+.badge-gray{background:var(--gray-bg);color:var(--text-dim);border:1px solid var(--border);}
+.qty-red{color:var(--red);font-weight:700;font-family:'DM Mono',monospace;}
+.qty-blue{color:var(--blue);font-weight:600;font-size:11px;}
+.qty-dim{color:var(--text-dim);font-family:'DM Mono',monospace;}
+.btn-dl{display:inline-flex;align-items:center;gap:8px;background:var(--green-bg);border:1.5px solid var(--green);color:var(--green);border-radius:8px;padding:11px 28px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .2s;margin-top:20px;}
+.btn-dl:hover{background:var(--green);color:#fff;transform:translateY(-1px);}
+.empty{padding:36px;text-align:center;color:var(--text-dim);font-size:12px;}
+.result-section{display:none;}
+.result-section.show{display:block;animation:fadeUp .35s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">더제이수<span>디홀릭 재고 업데이트</span></div>
+</header>
+<main>
+
+  <div class="card">
+    <div class="section-title">파일 업로드</div>
+    <div class="upload-grid">
+      <label class="upload-box" id="box-sbr" for="inp-sbr">
+        <input type="file" id="inp-sbr" accept=".xlsx,.xls">
+        <div class="upload-icon">📋</div>
+        <div class="upload-label">SBR 선주문 파일</div>
+        <div class="upload-hint">SBR210L_날짜.xlsx</div>
+        <div class="upload-status" id="st-sbr">클릭해서 파일 선택</div>
+      </label>
+      <label class="upload-box" id="box-stk" for="inp-stk">
+        <input type="file" id="inp-stk" accept=".csv,.xlsx">
+        <div class="upload-icon">📦</div>
+        <div class="upload-label">셀메이트 재고 파일</div>
+        <div class="upload-hint">stk_stockList_날짜.csv</div>
+        <div class="upload-status" id="st-stk">클릭해서 파일 선택</div>
+      </label>
+      <label class="upload-box" id="box-item" for="inp-item">
+        <input type="file" id="inp-item" accept=".xlsx,.xls">
+        <div class="upload-icon">🛍️</div>
+        <div class="upload-label">디홀릭 재고 리스트</div>
+        <div class="upload-hint">디홀릭재고리스트_날짜.xlsx</div>
+        <div class="upload-status" id="st-item">클릭해서 파일 선택</div>
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">처리 규칙</div>
+    <div class="rules-grid">
+      <div class="rule-item"><div class="rule-num">1</div><div><b>가용재고 계산</b>현재재고 − 미발송수 + SBR 잔여수량 (SBR에 없으면 0)</div></div>
+      <div class="rule-item"><div class="rule-num">2</div><div><b>옵션삭제·중지 제거</b>디홀릭 파일에서 '옵션삭제' 또는 '옵션중지' 행 제외</div></div>
+      <div class="rule-item"><div class="rule-num">3</div><div><b>가용재고 매칭 → K열 업데이트</b>셀메이트 옵션(색상,사이즈) ↔ 디홀릭 색상/사이즈 매칭 후 <span style="color:var(--red);font-weight:600">빨간 Bold</span> 입력</div></div>
+      <div class="rule-item"><div class="rule-num">4</div><div><b>품절 처리 요망</b>품절 + 가용재고 0 → 배경 연파랑 + <span style="color:var(--blue);font-weight:600">「품절 처리 요망」</span></div></div>
+      <div class="rule-item"><div class="rule-num">5</div><div><b>세트 상품 재고</b>구성품(자켓 + 스커트) 중 <b>더 적은 수량</b> 기준 입력<br><span style="color:var(--text-dim);font-size:11px">미스티 트위드 · 렌 트위드 · 그레이스 부클</span></div></div>
+      <div class="rule-item"><div class="rule-num">6</div><div><b>결과 파일 저장</b>엑셀 통합문서(.xlsx) 다운로드<br><span style="color:var(--text-dim);font-size:11px">파일명: 디홀릭 재고 업데이트_날짜.xlsx</span></div></div>
+    </div>
+  </div>
+
+  <div class="run-area">
+    <button class="btn-run" id="btn-run" disabled onclick="runProcess()">재고 업데이트 실행</button>
+  </div>
+  <div class="log-box" id="log-box"></div>
+
+  <div class="result-section card" id="result-section">
+    <div class="section-title">처리 결과</div>
+    <div class="stat-grid">
+      <div class="stat-card c-all"><div class="stat-num" id="s-total">0</div><div class="stat-label">전체 활성 행</div></div>
+      <div class="stat-card c-red"><div class="stat-num" id="s-updated">0</div><div class="stat-label">재고 업데이트 (일반 + 세트)</div></div>
+      <div class="stat-card c-blue"><div class="stat-num" id="s-soldout">0</div><div class="stat-label">품절 처리 요망</div></div>
+      <div class="stat-card c-yellow"><div class="stat-num" id="s-unmatched">0</div><div class="stat-label">미매칭 (STK 없음)</div></div>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showTab('all',this)">전체 결과 <span class="tab-count" id="tc-all">0</span></button>
+      <button class="tab-btn" onclick="showTab('soldout',this)">품절 처리 요망 <span class="tab-count" id="tc-soldout">0</span></button>
+      <button class="tab-btn" onclick="showTab('set',this)">세트 상품 <span class="tab-count" id="tc-set">0</span></button>
+      <button class="tab-btn" onclick="showTab('unmatched',this)">미매칭 <span class="tab-count" id="tc-unmatched">0</span></button>
+    </div>
+    <div id="tab-all" class="tab-panel active"><div class="tbl-wrap"><table class="result-table" id="tbl-all"></table></div></div>
+    <div id="tab-soldout" class="tab-panel"><div class="tbl-wrap"><table class="result-table" id="tbl-soldout"></table></div></div>
+    <div id="tab-set" class="tab-panel"><div class="tbl-wrap"><table class="result-table" id="tbl-set"></table></div></div>
+    <div id="tab-unmatched" class="tab-panel"><div class="tbl-wrap"><table class="result-table" id="tbl-unmatched"></table></div></div>
+    <button class="btn-dl" onclick="downloadExcel()">⬇ 엑셀 다운로드</button>
+  </div>
+
+</main>
+<script>
+const COLOR_MAP={'black':'블랙','cream':'크림','white':'화이트','gray':'그레이','grey':'그레이','navy':'네이비','beige':'베이지','brown':'브라운','ivory':'아이보리','pink':'핑크','red':'레드','blue':'블루','green':'그린','yellow':'옐로우','purple':'퍼플','orange':'오렌지','mint':'민트','khaki':'카키','wine':'와인','gold':'골드','silver':'실버','camel':'카멜','mocha':'모카','coral':'코랄','lavender':'라벤더','lilac':'라일락','light beige':'연베이지','pink beige':'핑크베이지'};
+const SET_RULES={
+  '[the J.Soo Premium] [세트] 미스티 트위드 스카프 자켓 + 미스티 트위드 스커트_Black':['[the J.Soo Premium] 미스티 트위드 스카프 자켓_Black','[the J.Soo Premium] 미스티 트위드 스커트_Black'],
+  '[the J.Soo Premium] [세트] 미스티 트위드 스카프 자켓 + 미스티 트위드 스커트_Ivory':['[the J.Soo Premium] 미스티 트위드 스카프 자켓_Ivory','[the J.Soo Premium] 미스티 트위드 스커트_Ivory'],
+  '[the J.Soo Premium] [세트] 렌 트위드 자켓 + 렌 트위드 스커트_Yellow':['[the J.Soo Premium] 렌 트위드 자켓_Yellow','[the J.Soo Premium] 렌 트위드 스커트_Yellow'],
+  '[the J.Soo Premium] [세트] 렌 트위드 자켓 + 렌 트위드 스커트_Black':['[the J.Soo Premium] 렌 트위드 자켓_Black','[the J.Soo Premium] 렌 트위드 스커트_Black'],
+  '[세트] 그레이스 부클 트위드 자켓 + 그레이스 부클 트위드 스커트_Black':['[the J.Soo Premium] 그레이스 부클 트위드 자켓_Black','[the J.Soo Premium] 그레이스 부클 트위드 스커트_Black'],
+  '[세트] 그레이스 부클 트위드 자켓 + 그레이스 부클 트위드 스커트_Pink beige':['[the J.Soo Premium] 그레이스 부클 트위드 자켓_Pink beige','[the J.Soo Premium] 그레이스 부클 트위드 스커트_Pink beige'],
+};
+const normColor=c=>{if(!c)return '';c=String(c).trim();const cl=c.toLowerCase();if(COLOR_MAP[cl])return COLOR_MAP[cl];return c.replace(/ST$/,'st').replace(/^ST/,'st');};
+const normSize=s=>{if(!s)return '';s=String(s).trim();return s.toUpperCase()==='FREE'?'':s.toUpperCase();};
+const parseOpt=opt=>{if(!opt)return['',''];const p=String(opt).trim().split(',');return p.length>=2?[p[0].trim(),p[1].trim()]:[p[0].trim(),''];};
+const makeKey=(n,c,s)=>`${String(n).trim()}|||${normColor(c)}|||${normSize(s)}`;
+
+let files={sbr:null,stk:null,item:null},resultRows=[];
+
+function setupInput(iId,bId,sId,key,label){
+  document.getElementById(iId).addEventListener('change',async e=>{
+    const f=e.target.files[0];if(!f)return;
+    const box=document.getElementById(bId),st=document.getElementById(sId);
+    try{
+      files[key]=key==='stk'&&f.name.toLowerCase().endsWith('.csv')?await parseCSV(f):await parseXLSX(f);
+      box.classList.add('loaded');box.classList.remove('error');
+      st.textContent=`✓ ${f.name}`;log(`${label} 로드 완료 (${files[key].length}행)`,'ok');
+    }catch(err){box.classList.add('error');box.classList.remove('loaded');st.textContent='✗ 파싱 오류';log(`${label} 오류: ${err.message}`,'err');}
+    checkReady();
+  });
+}
+const parseXLSX=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'binary'});res(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}));}catch(err){rej(err);}};r.readAsBinaryString(f);});
+const parseCSV=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>{try{const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());res(lines.map(l=>l.split(',').map(c=>c.replace(/^"|"$/g,''))));}catch(err){rej(err);}};r.readAsText(f,'euc-kr');});
+function checkReady(){document.getElementById('btn-run').disabled=!(files.sbr&&files.stk&&files.item);}
+function log(msg,type=''){const b=document.getElementById('log-box');b.classList.add('show');const d=document.createElement('div');d.className=type?`log-${type}`:'';d.textContent=`[${new Date().toLocaleTimeString('ko-KR')}] ${msg}`;b.appendChild(d);b.scrollTop=b.scrollHeight;}
+
+function runProcess(){
+  const btn=document.getElementById('btn-run');btn.disabled=true;btn.textContent='처리 중...';
+  setTimeout(()=>{try{process();btn.textContent='✓ 완료';}catch(err){log(`오류: ${err.message}`,'err');btn.disabled=false;btn.textContent='재고 업데이트 실행';}},30);
+}
+
+function process(){
+  // SBR
+  const sd=files.sbr;let shi=0;
+  for(let i=0;i<Math.min(5,sd.length);i++){if(sd[i].some(c=>String(c).includes('바코드번호'))){shi=i;break;}}
+  const sh=sd[shi].map(c=>String(c).trim());
+  const sBc=sh.indexOf('바코드번호'),sQty=sh.indexOf('잔여');
+  const sbrMap={};
+  for(let i=shi+1;i<sd.length;i++){const bc=String(sd[i][sBc]||'').trim();const q=parseInt(sd[i][sQty])||0;if(bc)sbrMap[bc]=q;}
+  log(`[STEP1] SBR: ${Object.keys(sbrMap).length}개 바코드`,'info');
+
+  // STK
+  const td=files.stk,th=td[0].map(c=>String(c).trim());
+  const iBc=th.indexOf('바코드번호'),iNm=th.indexOf('상품명'),iOpt=th.indexOf('옵션명');
+  const iSold=th.indexOf('품절여부'),iCur=th.indexOf('현재재고'),iUns=th.indexOf('미발송주문수');
+  const stkMap={},stkSoldout=new Set();
+  for(let i=1;i<td.length;i++){
+    const r=td[i];const bc=String(r[iBc]||'').trim(),nm=String(r[iNm]||'').trim();
+    const opt=String(r[iOpt]||'').trim(),sold=String(r[iSold]||'').trim();
+    const avail=Math.max(0,(parseInt(r[iCur])||0)-(parseInt(r[iUns])||0)+(sbrMap[bc]||0));
+    const[c,s]=parseOpt(opt);const key=makeKey(nm,c,s);
+    if(sold==='품절'&&avail===0)stkSoldout.add(key);else stkMap[key]=avail;
+  }
+  log(`[STEP1] STK 정상: ${Object.keys(stkMap).length}건 | 품절+가용0: ${stkSoldout.size}건`,'info');
+
+  // 디홀릭
+  const id=files.item;let ihi=0;
+  for(let i=0;i<Math.min(3,id.length);i++){if(id[i].some(c=>String(c).trim()==='상품별칭')){ihi=i;break;}}
+  const ih=id[ihi].map(c=>String(c).trim());
+  const iAl=ih.indexOf('상품별칭'),iCl=ih.indexOf('색상'),iSz=ih.indexOf('사이즈');
+  const iQty=ih.indexOf('판매가능수량'),iSt=ih.indexOf('옵션상태');
+  const allR=id.slice(ihi+1).filter(r=>r.some(c=>c!==''&&c!=null));
+  const actR=allR.filter(r=>!['옵션삭제','옵션중지'].includes(String(r[iSt]||'').trim()));
+  log(`[STEP2] 옵션삭제/중지 제거: ${allR.length-actR.length}행 → 활성 ${actR.length}행`,'info');
+
+  function getSetQty(alias,color,size){
+    const qtys=[];let hasSold=false;
+    for(const comp of SET_RULES[alias]){
+      const k1=makeKey(comp,normColor(color),normSize(size)),k2=makeKey(comp,normColor(color),'');
+      if(stkMap[k1]!==undefined)qtys.push(stkMap[k1]);
+      else if(stkSoldout.has(k1)){hasSold=true;qtys.push(0);}
+      else if(stkMap[k2]!==undefined)qtys.push(stkMap[k2]);
+      else if(stkSoldout.has(k2)){hasSold=true;qtys.push(0);}
+      else qtys.push(null);
+    }
+    if(qtys.some(q=>q===null))return null;
+    const m=Math.min(...qtys);return m===0&&hasSold?'soldout':m;
+  }
+
+  resultRows=[];let cU=0,cS=0,cSold=0,cUn=0;
+  for(const row of actR){
+    const alias=String(row[iAl]||'').trim(),color=row[iCl],size=row[iSz];
+    const isSet=SET_RULES.hasOwnProperty(alias);
+    let newQty=null,isSoldout=false,rType='unmatched';
+    if(isSet){const r=getSetQty(alias,color,size);if(r==='soldout'){isSoldout=true;rType='soldout';}else if(r!==null){newQty=r;rType='set';cS++;}}
+    else{const key=makeKey(alias,normColor(color),normSize(size));if(stkMap[key]!==undefined){newQty=stkMap[key];rType='updated';cU++;}else if(stkSoldout.has(key)){isSoldout=true;rType='soldout';}}
+    if(isSoldout)cSold++;else if(rType==='unmatched')cUn++;
+    const outRow=[...row];outRow[iQty]=isSoldout?'품절 처리 요망':(newQty!==null?newQty:row[iQty]);
+    resultRows.push({cells:outRow,type:rType,alias,color:String(color||''),size:String(size||''),newQty:isSoldout?'품절 처리 요망':(newQty!==null?newQty:row[iQty])});
+  }
+  log(`[STEP3] 일반 업데이트: ${cU}건 | 세트: ${cS}건`,'ok');
+  log(`[STEP4] 품절 처리 요망: ${cSold}건 | 미매칭: ${cUn}건`,cSold>0?'warn':'ok');
+
+  document.getElementById('s-total').textContent=actR.length;
+  document.getElementById('s-updated').textContent=cU+cS;
+  document.getElementById('s-soldout').textContent=cSold;
+  document.getElementById('s-unmatched').textContent=cUn;
+  const sRows=resultRows.filter(r=>r.type==='soldout');
+  const setRows=resultRows.filter(r=>r.type==='set');
+  const unRows=resultRows.filter(r=>r.type==='unmatched');
+  document.getElementById('tc-all').textContent=resultRows.length;
+  document.getElementById('tc-soldout').textContent=sRows.length;
+  document.getElementById('tc-set').textContent=setRows.length;
+  document.getElementById('tc-unmatched').textContent=unRows.length;
+  renderTable('tbl-all',resultRows);renderTable('tbl-soldout',sRows);
+  renderTable('tbl-set',setRows);renderTable('tbl-unmatched',unRows);
+  document.getElementById('result-section').classList.add('show');
+  log('✅ 완료! 결과를 확인 후 엑셀 다운로드 하세요.','ok');
+}
+
+function renderTable(id,rows){
+  const tbl=document.getElementById(id);tbl.innerHTML='';
+  if(!rows.length){tbl.innerHTML='<tr><td colspan="5" class="empty">해당 항목 없음</td></tr>';return;}
+  const thead=tbl.createTHead(),hRow=thead.insertRow();
+  ['상품별칭','색상','사이즈','판매가능수량','구분'].forEach(h=>{const th=document.createElement('th');th.textContent=h;hRow.appendChild(th);});
+  const tbody=tbl.createTBody();
+  for(const r of rows){
+    const tr=tbody.insertRow();if(r.type==='soldout')tr.classList.add('row-soldout');
+    const td0=tr.insertCell();td0.textContent=r.alias;td0.style.cssText='max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+    tr.insertCell().textContent=r.color||'-';
+    tr.insertCell().textContent=r.size||'FREE';
+    const td3=tr.insertCell();
+    if(r.type==='soldout')td3.innerHTML='<span class="qty-blue">품절 처리 요망</span>';
+    else if(r.type==='updated'||r.type==='set')td3.innerHTML=`<span class="qty-red">${r.newQty}</span>`;
+    else td3.innerHTML=`<span class="qty-dim">${r.newQty??'-'}</span>`;
+    const td4=tr.insertCell();
+    const bMap={updated:['badge-red','재고업데이트'],set:['badge-green','세트'],soldout:['badge-blue','품절처리요망'],unmatched:['badge-gray','미매칭']};
+    const[cls,lbl]=bMap[r.type]||['badge-gray','?'];
+    td4.innerHTML=`<span class="badge ${cls}">${lbl}</span>`;
+  }
+}
+
+function showTab(name,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');btn.classList.add('active');
+}
+
+function downloadExcel(){
+  if(!resultRows.length)return;
+  const id=files.item;let ihi=0;
+  for(let i=0;i<Math.min(3,id.length);i++){if(id[i].some(c=>String(c).trim()==='상품별칭')){ihi=i;break;}}
+  const headers=id[ihi].map(c=>String(c).trim());const iQty=headers.indexOf('판매가능수량');
+  const wsData=[headers,...resultRows.map(r=>{const row=[...r.cells];row[iQty]=r.type==='soldout'?'품절 처리 요망':(r.newQty??row[iQty]);return row;})];
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[6,12,12,28,44,10,10,10,12,8,15,13,10,14,10,8,10,10].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'재고현황');
+  const d=new Date();const ds=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  XLSX.writeFile(wb,`디홀릭 재고 업데이트_${ds}.xlsx`);
+  log(`엑셀 다운로드: 디홀릭 재고 업데이트_${ds}.xlsx`,'ok');
+}
+
+setupInput('inp-sbr','box-sbr','st-sbr','sbr','SBR 선주문');
+setupInput('inp-stk','box-stk','st-stk','stk','셀메이트 재고');
+setupInput('inp-item','box-item','st-item','item','디홀릭 리스트');
+</script>
+</body>
+</html>
