@@ -286,27 +286,29 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
   <div class="card">
     <div class="sec-title"><span class="sec-num">2</span>작업자 이름 설정</div>
 
-    <!-- ★ v4.1: 알바 없는 날 모드 토글 -->
+    <!-- ★ v4.7: 알바 없는 날 모드 (지금 상황) -->
     <label class="solo-mode-toggle">
-      <input type="checkbox" id="soloMode" onchange="onSoloModeChange()">
+      <input type="checkbox" id="soloMode" onchange="onSoloModeChange()" checked>
       <div class="solo-mode-text">
         <div class="solo-mode-title">
           <span class="solo-mode-icon">🤝</span>
-          알바 없는 날 모드 <span class="solo-mode-sub">(둘이서 모두 처리)</span>
+          알바 없는 날 모드
         </div>
         <div class="solo-mode-desc">
-          체크하면 비스팀과 스팀 각각 50:50으로 나누고, <strong>스팀은 1.3배 가중치</strong>로 체감 작업량을 보정합니다.
+          <strong>체크 안 함 = 알바 있는 날</strong>: 비스팀 이혜정 1/3 · 윤혜정 2/3<br>
+          <strong>체크함 = 알바 없는 날</strong>: 비스팀 50:50<br>
+          스팀은 언제나 <strong>이혜정 화면</strong>에 표시됩니다 (실작업은 함께).
         </div>
       </div>
     </label>
 
     <div class="worker-grid">
       <div class="w-box">
-        <label><span class="w-dot d1"></span><span id="w1Label">작업자 1 · 먼저 처리 + 스팀 포함</span></label>
+        <label><span class="w-dot d1"></span><span id="w1Label">작업자 1 · <strong style="color:#92400E">비스팀 50% + 스팀 담당</strong></span></label>
         <input type="text" id="w1" value="이혜정" placeholder="이혜정">
       </div>
       <div class="w-box">
-        <label><span class="w-dot d2"></span><span id="w2Label">작업자 2 · 나머지</span></label>
+        <label><span class="w-dot d2"></span><span id="w2Label">작업자 2 · <strong style="color:#92400E">비스팀 50%</strong></span></label>
         <input type="text" id="w2" value="윤혜정" placeholder="윤혜정">
       </div>
     </div>
@@ -450,17 +452,38 @@ function onFile(inp){
   document.getElementById('dzFile').textContent=selFile.name;
 }
 
-// ★ v4.2: 알바 없는 날 모드 토글 시 작업자 라벨 업데이트
+// ★ v4.7: 알바 없는 날 모드 토글 시 작업자 라벨 업데이트 + 마지막 선택 저장
 function onSoloModeChange(){
   const checked = document.getElementById('soloMode').checked;
+  // 마지막 선택 저장 (다음 열 때 자동 복원)
+  try { localStorage.setItem('thejsoo_dist_soloMode', checked ? '1' : '0'); } catch(e) {}
+  
   if(checked){
-    document.getElementById('w1Label').innerHTML = '작업자 1 · <strong style="color:#92400E">비스팀+스팀 각 50:50 (가중치 1.3 보정)</strong>';
-    document.getElementById('w2Label').innerHTML = '작업자 2 · <strong style="color:#92400E">비스팀+스팀 각 50:50 (가중치 1.3 보정)</strong>';
+    // 알바 없는 날: 비스팀 50:50
+    document.getElementById('w1Label').innerHTML = '작업자 1 · <strong style="color:#92400E">비스팀 50% + 스팀 담당</strong>';
+    document.getElementById('w2Label').innerHTML = '작업자 2 · <strong style="color:#92400E">비스팀 50%</strong>';
   } else {
-    document.getElementById('w1Label').textContent = '작업자 1 · 먼저 처리 + 스팀 포함';
-    document.getElementById('w2Label').textContent = '작업자 2 · 나머지';
+    // 알바 있는 날 (기본): 비스팀 1/3 : 2/3
+    document.getElementById('w1Label').textContent = '작업자 1 · 비스팀 1/3 + 스팀 담당';
+    document.getElementById('w2Label').textContent = '작업자 2 · 비스팀 2/3';
   }
 }
+
+// ★ 페이지 로드 시 마지막 선택 복원
+(function restoreSoloMode(){
+  try {
+    const saved = localStorage.getItem('thejsoo_dist_soloMode');
+    // 저장된 값이 없으면 기본값(체크됨) 유지
+    if(saved === null) return;
+    const checkbox = document.getElementById('soloMode');
+    if(!checkbox) return;
+    const shouldCheck = saved === '1';
+    if(checkbox.checked !== shouldCheck){
+      checkbox.checked = shouldCheck;
+      onSoloModeChange();  // 라벨도 함께 업데이트
+    }
+  } catch(e) { /* localStorage 사용 불가 환경 - 조용히 무시 */ }
+})();
 
 /* ════════════════════════════════════
    ★ 구글드라이브 최신 SBAODL/SBODWL 불러오기
@@ -957,54 +980,29 @@ async function run(){
 
     if(soloMode){
       // ═══════════════════════════════════════════════
-      // ★ v4.4: 알바 없는 날 - 스팀 50:50 분배 → 비스팀 체감 균형 그리디
-      //   1) 스팀 50:50 분배 (가까운 쪽 선택)
-      //   2) 비스팀 행을 순서대로 보면서, 
-      //      "이혜정 vs 윤혜정 중 체감 차이가 작아지는 쪽"에 추가
-      //   → 가중치 1.3 자동 적용, 큰 행도 자연스럽게 분배됨
+      // ★ v4.7 알바 없는 날 모드 (지금 상황, 2인 체제)
+      //   - 비스팀: 50:50 (이혜정 절반, 윤혜정 절반)
+      //   - 스팀: 모두 이혜정 화면에 표시 (이혜정+윤혜정 함께 작업)
       // ═══════════════════════════════════════════════
-      const STEAM_WEIGHT = 1.3;
-
-      // Step 1: 스팀 50:50 분배
-      const stmDist = distributeByTarget(stm, totalStm / 2);
-      w1stm = stmDist.a;
-      w2stm = stmDist.b;
-      const w1stmQ = w1stm.reduce((a,r)=>a+r.입고수량, 0);
-      const w2stmQ = w2stm.reduce((a,r)=>a+r.입고수량, 0);
-
-      // Step 2: 비스팀을 체감 균형 그리디로 분배
-      //   현재 체감 = 스팀 체감 (시작 상태)
-      //   각 비스팀 행마다 추가 후 체감 차이가 더 작은 쪽 선택
-      let e1 = w1stmQ * STEAM_WEIGHT;
-      let e2 = w2stmQ * STEAM_WEIGHT;
-      w1rows = [];
-      w2rows = [];
-      for(const row of ns){
-        const q = row.입고수량;
-        const diffA = Math.abs((e1 + q) - e2);   // 이혜정에게 추가 시
-        const diffB = Math.abs(e1 - (e2 + q));   // 윤혜정에게 추가 시
-        if(diffA <= diffB){
-          w1rows.push(row); e1 += q;
-        } else {
-          w2rows.push(row); e2 += q;
-        }
-      }
-
-      // 공급처 순서로 재정렬 (가독성)
-      w1rows.sort((a,b)=>a.공급처<b.공급처?-1:a.공급처>b.공급처?1:0);
-      w2rows.sort((a,b)=>a.공급처<b.공급처?-1:a.공급처>b.공급처?1:0);
-
-      pushLog('보정',
-        `🤝 균형분배 | 스팀 ${w1stmQ}:${w2stmQ}, 비스팀 ${w1rows.reduce((a,r)=>a+r.입고수량,0)}:${w2rows.reduce((a,r)=>a+r.입고수량,0)} ` +
-        `→ 체감 ${e1.toFixed(1)} : ${e2.toFixed(1)} (차이 ${Math.abs(e1-e2).toFixed(1)})`
-      );
-    } else {
-      // ── 평소: 비스팀만 1/3 기준 (스팀은 알바 따로) ★ 기존 동작 그대로
-      const w1nsTarget = totalNs / 3;
+      const w1nsTarget = totalNs / 2;   // 50% 목표
       const nsDist = distributeByTarget(ns, w1nsTarget);
       w1rows = nsDist.a;
       w2rows = nsDist.b;
-      w1stm = stm;       // 모든 스팀 이혜정 (단기알바가 처리)
+      w1stm = stm;       // 모든 스팀 이혜정 화면에
+      w2stm = [];
+      pushLog('보정', `🤝 알바없음 (50:50) | 비스팀 ${w1rows.reduce((a,r)=>a+r.입고수량,0)}:${w2rows.reduce((a,r)=>a+r.입고수량,0)} · 스팀 ${w1stm.reduce((a,r)=>a+r.입고수량,0)}개 → ${w1}`);
+    } else {
+      // ═══════════════════════════════════════════════
+      // ★ v4.7 알바 있는 날 모드 (기본)
+      //   - 비스팀: 이혜정 1/3 (33%) · 윤혜정 2/3 (67%)
+      //     이혜정이 스팀 검수도 하니까 비스팀 적게
+      //   - 스팀: 모두 이혜정 화면에 표시 (알바가 이혜정 밑에서 실작업)
+      // ═══════════════════════════════════════════════
+      const w1nsTarget = totalNs / 3;   // 33% 목표
+      const nsDist = distributeByTarget(ns, w1nsTarget);
+      w1rows = nsDist.a;
+      w2rows = nsDist.b;
+      w1stm = stm;       // 모든 스팀 이혜정 화면에
       w2stm = [];
     }
 
@@ -1020,7 +1018,7 @@ async function run(){
       const w2effort = w2qty * 1.0 + w2stmQty * 1.3;
       pushLog('16-18',`🤝 알바없음 (스팀×1.3) | ${w1} 비스팀${w1qty}+스팀${w1stmQty}=총${w1total} 체감${w1effort.toFixed(1)} / ${w2} 비스팀${w2qty}+스팀${w2stmQty}=총${w2total} 체감${w2effort.toFixed(1)}`);
     } else {
-      pushLog('16-18',`${w1} 비스팀 ${w1qty}개(${w1rows.length}행) / ${w2} ${w2qty}개(${w2rows.length}행) / 스팀 ${stmQty}개 → ${w1}`);
+      pushLog('16-18',`${w1} 비스팀 ${w1qty}개(${w1rows.length}행) + 스팀 ${stmQty}개 / ${w2} 비스팀 ${w2qty}개(${w2rows.length}행)`);
     }
     markStep(4,'done'); setProgress(62,'엑셀 생성...');
 
@@ -1228,10 +1226,10 @@ async function run(){
     const empStatHtml = empMerged.length > 0
       ? `<div class="stat-box" style="background:#F3E8FF"><div class="s-name">👤 직원구매 (별도)</div><div class="s-val" style="color:#9333EA">${empQty}</div><div class="s-sub">${empMerged.length}행 · CSV제외</div></div>`
       : '';
-    // ★ v4.2: 알바 없는 날 - 스팀도 50:50 분배되고, 가중치 1.3으로 체감 균형
+    // ★ v4.7: 스팀은 언제나 이혜정 화면 (실작업만 상황에 따라 다름)
     const stmStatHtml = soloMode
-      ? `<div class="stat-box sb-amber"><div class="s-name">🤝 스팀 (50:50 가중치)</div><div class="s-val">${stmQty}</div><div class="s-sub">${w1} ${w1stmQty}개 / ${w2} ${w2stmQty}개</div></div>`
-      : `<div class="stat-box sb-amber"><div class="s-name">스팀 (${w1})</div><div class="s-val">${stmQty}</div><div class="s-sub">${stm.length}행</div></div>`;
+      ? `<div class="stat-box sb-amber"><div class="s-name">스팀 (${w1} 화면)</div><div class="s-val">${stmQty}</div><div class="s-sub">${w1}·${w2} 함께 작업</div></div>`
+      : `<div class="stat-box sb-amber"><div class="s-name">스팀 (${w1} 화면)</div><div class="s-val">${stmQty}</div><div class="s-sub">알바가 실작업</div></div>`;
     document.getElementById('statGrid').innerHTML=`
       <div class="stat-box sb-blue"><div class="s-name">${w1}${soloMode?' (비스팀)':' (비스팀)'}</div><div class="s-val">${w1qty}</div><div class="s-sub">${w1rows.length}행</div></div>
       <div class="stat-box sb-pink"><div class="s-name">${w2}${soloMode?' (비스팀)':''}</div><div class="s-val">${w2qty}</div><div class="s-sub">${w2rows.length}행</div></div>
@@ -1256,8 +1254,8 @@ async function run(){
     document.getElementById('logWrap').innerHTML=logs.map(l=>
       `<div class="log-row"><span class="log-step">${l.step}</span><span class="log-msg">${l.msg}</span></div>`
     ).join('');
-    const soloTag = soloMode ? ' · 🤝 알바없음' : '';
-    document.getElementById('resultSub').textContent=`xlsx 2개 + csv 2개 · ${w1} ${w1qty+w1stmQty}개 / ${w2} ${w2qty+w2stmQty}개${soloTag}`;
+    const modeTag = soloMode ? ' · 🤝 알바없음 (50:50)' : ' · 알바있음 (1/3:2/3)';
+    document.getElementById('resultSub').textContent=`xlsx 2개 + csv 2개 · ${w1} ${w1qty+w1stmQty}개 / ${w2} ${w2qty+w2stmQty}개${modeTag}`;
     document.getElementById('resultCard').style.display='block';
 
     // 미리보기 렌더 (★ 알바 없는 날엔 두 명 모두 스팀 합쳐서 표시)
@@ -1354,11 +1352,11 @@ function renderPreview(w1name, w2name, w1rows, w2rows, stmRows, empRows, soloMod
   document.getElementById('tab1name').textContent = w1name;
   document.getElementById('tab2name').textContent = w2name;
 
-  // ★ v4.1: 알바 없는 날 모드: 각 작업자 탭에 비스팀+자기담당스팀 합쳐 표시
-  //   기존 동작: w1=비스팀만, w2=비스팀만 (스팀 탭은 별도, 모두 이혜정 표시)
-  //   알바 없음: w1=비스팀+w1스팀, w2=비스팀+w2스팀 (스팀 탭은 두 명 합산 표시)
-  const tab1Rows = (soloMode && w1stm) ? [...w1rows, ...w1stm] : w1rows;
-  const tab2Rows = (soloMode && w2stm) ? [...w2rows, ...w2stm] : w2rows;
+  // ★ v4.7: 스팀은 언제나 이혜정 화면에 표시 (w1stm에만 있음)
+  //   이혜정 탭 = 비스팀 + 스팀
+  //   윤혜정 탭 = 비스팀만
+  const tab1Rows = w1stm && w1stm.length > 0 ? [...w1rows, ...w1stm] : w1rows;
+  const tab2Rows = w2rows;
 
   const tab1qty = tab1Rows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
   const tab2qty = tab2Rows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
@@ -1370,9 +1368,9 @@ function renderPreview(w1name, w2name, w1rows, w2rows, stmRows, empRows, soloMod
   document.getElementById('tab2cnt').textContent = tab2qty;
   document.getElementById('tabEcnt').textContent = empQty;
 
-  buildTable('tbl1', tab1Rows, 'footer1', 'footer1r', w1name + (soloMode?' (비스팀+스팀)':''), 'var(--accent)');
-  buildTable('tblS', stmRows,'footerS', 'footerSr', soloMode ? '🤝 스팀 (둘이 분담 · 가중치 1.3)' : '스팀 (' + w1name + ')',  'var(--amber)');
-  buildTable('tbl2', tab2Rows, 'footer2', 'footer2r', w2name + (soloMode?' (비스팀+스팀)':''), 'var(--pink)');
+  buildTable('tbl1', tab1Rows, 'footer1', 'footer1r', w1name + ' (비스팀+스팀)', 'var(--accent)');
+  buildTable('tblS', stmRows,'footerS', 'footerSr', '스팀 (' + w1name + ' 화면)',  'var(--amber)');
+  buildTable('tbl2', tab2Rows, 'footer2', 'footer2r', w2name + ' (비스팀)', 'var(--pink)');
   buildTable('tblE', empRows,'footerE', 'footerEr', '직원구매', '#9333EA', true);
 
   // 직원구매 탭: 건수 있을 때만 표시
