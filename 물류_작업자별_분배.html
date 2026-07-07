@@ -1352,10 +1352,10 @@ function renderPreview(w1name, w2name, w1rows, w2rows, stmRows, empRows, soloMod
   document.getElementById('tab1name').textContent = w1name;
   document.getElementById('tab2name').textContent = w2name;
 
-  // ★ v4.7: 스팀은 언제나 이혜정 화면에 표시 (w1stm에만 있음)
-  //   이혜정 탭 = 비스팀 + 스팀
-  //   윤혜정 탭 = 비스팀만
-  const tab1Rows = w1stm && w1stm.length > 0 ? [...w1rows, ...w1stm] : w1rows;
+  // ★ v4.8: 이혜정/윤혜정 탭은 언제나 비스팀만 표시
+  //   스팀은 별도 스팀 탭에서 확인 (혼란 방지)
+  //   담당자 등록 자체는 이혜정 화면에 스팀이 들어가지만, 미리보기는 분리
+  const tab1Rows = w1rows;
   const tab2Rows = w2rows;
 
   const tab1qty = tab1Rows.reduce((a,r)=>a+(Number(r.입고수량)||0),0);
@@ -1368,7 +1368,7 @@ function renderPreview(w1name, w2name, w1rows, w2rows, stmRows, empRows, soloMod
   document.getElementById('tab2cnt').textContent = tab2qty;
   document.getElementById('tabEcnt').textContent = empQty;
 
-  buildTable('tbl1', tab1Rows, 'footer1', 'footer1r', w1name + ' (비스팀+스팀)', 'var(--accent)');
+  buildTable('tbl1', tab1Rows, 'footer1', 'footer1r', w1name + ' (비스팀)', 'var(--accent)');
   buildTable('tblS', stmRows,'footerS', 'footerSr', '스팀 (' + w1name + ' 화면)',  'var(--amber)');
   buildTable('tbl2', tab2Rows, 'footer2', 'footer2r', w2name + ' (비스팀)', 'var(--pink)');
   buildTable('tblE', empRows,'footerE', 'footerEr', '직원구매', '#9333EA', true);
