@@ -295,9 +295,9 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
           알바 없는 날 모드
         </div>
         <div class="solo-mode-desc">
-          <strong>체크 안 함 = 알바 있는 날</strong>: 비스팀 이혜정 1/3 · 윤혜정 2/3<br>
+          <strong>체크 안 함 = 알바 있는 날</strong>: 비스팀 윤혜정 1/3 · 김이슬 2/3<br>
           <strong>체크함 = 알바 없는 날</strong>: 비스팀 50:50<br>
-          스팀은 언제나 <strong>이혜정 화면</strong>에 표시됩니다 (실작업은 함께).
+          스팀은 언제나 <strong>윤혜정 화면</strong>에 표시됩니다 (실작업은 함께).
         </div>
       </div>
     </label>
@@ -305,11 +305,11 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
     <div class="worker-grid">
       <div class="w-box">
         <label><span class="w-dot d1"></span><span id="w1Label">작업자 1 · <strong style="color:#92400E">비스팀 50% + 스팀 담당</strong></span></label>
-        <input type="text" id="w1" value="이혜정" placeholder="이혜정">
+        <input type="text" id="w1" value="윤혜정" placeholder="윤혜정">
       </div>
       <div class="w-box">
         <label><span class="w-dot d2"></span><span id="w2Label">작업자 2 · <strong style="color:#92400E">비스팀 50%</strong></span></label>
-        <input type="text" id="w2" value="윤혜정" placeholder="윤혜정">
+        <input type="text" id="w2" value="김이슬" placeholder="김이슬">
       </div>
     </div>
   </div>
@@ -353,13 +353,13 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
         <div class="log-header" style="margin-top:20px;">결과 미리보기</div>
         <div class="preview-tabs">
           <div class="preview-tab active" id="tab1" onclick="switchTab(1)">
-            <span id="tab1name">이혜정</span><span class="tab-cnt" id="tab1cnt">0</span>
+            <span id="tab1name">윤혜정</span><span class="tab-cnt" id="tab1cnt">0</span>
           </div>
           <div class="preview-tab ts" id="tabS" onclick="switchTab('S')">
             🔥 스팀<span class="tab-cnt" id="tabScnt">0</span>
           </div>
           <div class="preview-tab t2" id="tab2" onclick="switchTab(2)">
-            <span id="tab2name">윤혜정</span><span class="tab-cnt" id="tab2cnt">0</span>
+            <span id="tab2name">김이슬</span><span class="tab-cnt" id="tab2cnt">0</span>
           </div>
           <div class="preview-tab te" id="tabE" onclick="switchTab('E')" style="display:none">
             👤 직원구매<span class="tab-cnt" id="tabEcnt">0</span>
@@ -803,8 +803,8 @@ async function run(){
     const ok = await loadTodayFromDrive();
     if(!ok) return;  // 모달 떠있음, 중단 (재시도 시 retryDriveLoad가 run() 재호출)
   }
-  const w1=document.getElementById('w1').value.trim()||'이혜정';
-  const w2=document.getElementById('w2').value.trim()||'윤혜정';
+  const w1=document.getElementById('w1').value.trim()||'윤혜정';
+  const w2=document.getElementById('w2').value.trim()||'김이슬';
   logs.length=0;
   document.getElementById('runBtn').disabled=true;
   document.getElementById('errBox').style.display='none';
@@ -935,9 +935,9 @@ async function run(){
     // ★ v4.1: 알바 없는 날 모드 확인
     const soloMode = document.getElementById('soloMode').checked;
 
-    // 16~18. 이혜정/윤혜정 분배
-    //   - 평소 (divisor=3, 1/3 기준): 이혜정 비스팀 적게 받고, 스팀까지 본인 처리
-    //   - 알바 없는 날: 이혜정이 스팀 전담 + 비스팀은 총량 50:50 되도록 분배
+    // 16~18. 윤혜정/김이슬 분배
+    //   - 평소 (divisor=3, 1/3 기준): 윤혜정 비스팀 적게 받고, 스팀까지 본인 처리
+    //   - 알바 없는 날: 윤혜정이 스팀 전담 + 비스팀은 총량 50:50 되도록 분배
     markStep(4,'active');
 
     /**
@@ -981,28 +981,28 @@ async function run(){
     if(soloMode){
       // ═══════════════════════════════════════════════
       // ★ v4.7 알바 없는 날 모드 (지금 상황, 2인 체제)
-      //   - 비스팀: 50:50 (이혜정 절반, 윤혜정 절반)
-      //   - 스팀: 모두 이혜정 화면에 표시 (이혜정+윤혜정 함께 작업)
+      //   - 비스팀: 50:50 (윤혜정 절반, 김이슬 절반)
+      //   - 스팀: 모두 윤혜정 화면에 표시 (윤혜정+김이슬 함께 작업)
       // ═══════════════════════════════════════════════
       const w1nsTarget = totalNs / 2;   // 50% 목표
       const nsDist = distributeByTarget(ns, w1nsTarget);
       w1rows = nsDist.a;
       w2rows = nsDist.b;
-      w1stm = stm;       // 모든 스팀 이혜정 화면에
+      w1stm = stm;       // 모든 스팀 윤혜정 화면에
       w2stm = [];
       pushLog('보정', `🤝 알바없음 (50:50) | 비스팀 ${w1rows.reduce((a,r)=>a+r.입고수량,0)}:${w2rows.reduce((a,r)=>a+r.입고수량,0)} · 스팀 ${w1stm.reduce((a,r)=>a+r.입고수량,0)}개 → ${w1}`);
     } else {
       // ═══════════════════════════════════════════════
       // ★ v4.7 알바 있는 날 모드 (기본)
-      //   - 비스팀: 이혜정 1/3 (33%) · 윤혜정 2/3 (67%)
-      //     이혜정이 스팀 검수도 하니까 비스팀 적게
-      //   - 스팀: 모두 이혜정 화면에 표시 (알바가 이혜정 밑에서 실작업)
+      //   - 비스팀: 윤혜정 1/3 (33%) · 김이슬 2/3 (67%)
+      //     윤혜정이 스팀 검수도 하니까 비스팀 적게
+      //   - 스팀: 모두 윤혜정 화면에 표시 (알바가 윤혜정 밑에서 실작업)
       // ═══════════════════════════════════════════════
       const w1nsTarget = totalNs / 3;   // 33% 목표
       const nsDist = distributeByTarget(ns, w1nsTarget);
       w1rows = nsDist.a;
       w2rows = nsDist.b;
-      w1stm = stm;       // 모든 스팀 이혜정 화면에
+      w1stm = stm;       // 모든 스팀 윤혜정 화면에
       w2stm = [];
     }
 
@@ -1033,10 +1033,10 @@ async function run(){
     }
     const colWidths=calcColWidths([...toSheet(w1rows),...toSheet(w2rows),...toSheet(stm)]);
 
-    // 이혜정 xlsx
+    // 윤혜정 xlsx
     markStep(5,'active');
-    // ★ v4.1: 알바 없는 날 모드면 윤혜정도 스팀 시트 포함
-    //   - soloMode false: 이혜정만 스팀 시트 (기존 동작)
+    // ★ v4.1: 알바 없는 날 모드면 김이슬도 스팀 시트 포함
+    //   - soloMode false: 윤혜정만 스팀 시트 (기존 동작)
     //   - soloMode true:  두 직원 모두 스팀 시트 (각자 분배된 양)
     const wb1=new ExcelJS.Workbook();
     wb1.creator='더제이수';
@@ -1082,7 +1082,7 @@ async function run(){
       empWs.views=[{state:'frozen',xSplit:0,ySplit:1,activeCell:'A2'}];
     }
 
-    // 윤혜정 xlsx (★ 알바 없는 날엔 w2stm도 포함)
+    // 김이슬 xlsx (★ 알바 없는 날엔 w2stm도 포함)
     const wb2=new ExcelJS.Workbook();
     wb2.creator='더제이수';
     wb2.calcProperties={fullCalcOnLoad:true};
@@ -1090,7 +1090,7 @@ async function run(){
     addEmpSheet(wb2);  // 직원구매 시트 추가
     const buf2=await wb2.xlsx.writeBuffer();
 
-    // 이혜정 파일 재생성 (직원구매 시트 포함)
+    // 윤혜정 파일 재생성 (직원구매 시트 포함)
     const wb1b=new ExcelJS.Workbook();
     wb1b.creator='더제이수';
     wb1b.calcProperties={fullCalcOnLoad:true};
@@ -1114,7 +1114,7 @@ async function run(){
     const todayFmt=todayStr('');
 
     // ★ v4.1: CSV의 스팀 처리
-    //   - soloMode false: 모든 스팀이 이혜정 → csv1에 stmRaw 통째로
+    //   - soloMode false: 모든 스팀이 윤혜정 → csv1에 stmRaw 통째로
     //   - soloMode true:  스팀이 분배됨 → 합산 키 기준으로 원본 stmRaw를 두 그룹으로 나눔
     let csv1, csv2;
     if(soloMode){
@@ -1226,7 +1226,7 @@ async function run(){
     const empStatHtml = empMerged.length > 0
       ? `<div class="stat-box" style="background:#F3E8FF"><div class="s-name">👤 직원구매 (별도)</div><div class="s-val" style="color:#9333EA">${empQty}</div><div class="s-sub">${empMerged.length}행 · CSV제외</div></div>`
       : '';
-    // ★ v4.7: 스팀은 언제나 이혜정 화면 (실작업만 상황에 따라 다름)
+    // ★ v4.7: 스팀은 언제나 윤혜정 화면 (실작업만 상황에 따라 다름)
     const stmStatHtml = soloMode
       ? `<div class="stat-box sb-amber"><div class="s-name">스팀 (${w1} 화면)</div><div class="s-val">${stmQty}</div><div class="s-sub">${w1}·${w2} 함께 작업</div></div>`
       : `<div class="stat-box sb-amber"><div class="s-name">스팀 (${w1} 화면)</div><div class="s-val">${stmQty}</div><div class="s-sub">알바가 실작업</div></div>`;
@@ -1352,9 +1352,9 @@ function renderPreview(w1name, w2name, w1rows, w2rows, stmRows, empRows, soloMod
   document.getElementById('tab1name').textContent = w1name;
   document.getElementById('tab2name').textContent = w2name;
 
-  // ★ v4.8: 이혜정/윤혜정 탭은 언제나 비스팀만 표시
+  // ★ v4.8: 윤혜정/김이슬 탭은 언제나 비스팀만 표시
   //   스팀은 별도 스팀 탭에서 확인 (혼란 방지)
-  //   담당자 등록 자체는 이혜정 화면에 스팀이 들어가지만, 미리보기는 분리
+  //   담당자 등록 자체는 윤혜정 화면에 스팀이 들어가지만, 미리보기는 분리
   const tab1Rows = w1rows;
   const tab2Rows = w2rows;
 
@@ -1415,7 +1415,7 @@ async function autoCreateInspection(){
   d.w2rows.forEach(r => items.push({ 담당자:d.w2name, 공급처:r.공급처, 사입명:r.사입명, 상품명:r.상품명, 옵션:r.옵션, 입고수량:r.입고수량, 바코드:r.바코드번호||'', 상품메모1:r.상품메모1||'', 대표이미지주소:r.대표이미지주소||'', 메모:r.메모||'', 비고:r.비고||'' }));
 
   // ★ v4.1: 스팀 분배 — 모드에 따라 다르게
-  //   기본: 모든 스팀이 담당자1(이혜정)에게 → 단기알바가 처리
+  //   기본: 모든 스팀이 담당자1(윤혜정)에게 → 단기알바가 처리
   //   알바 없음: w1stm은 w1에게, w2stm은 w2에게
   if(d.soloMode){
     // 알바 없는 날: 각자 자기 분담분 스팀

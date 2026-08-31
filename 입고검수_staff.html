@@ -329,14 +329,14 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
     <h2>더제이수 입고검수</h2>
     <p>담당자를 선택해주세요</p>
     <div class="worker-btns">
-      <button class="worker-btn w-1" onclick="startAs('이혜정')">
-        <span class="wb-icon">👤</span>
-        <span class="wb-name">이혜정</span>
-        <span class="wb-hint">일반 + 🔥 스팀</span>
-      </button>
-      <button class="worker-btn w-2" onclick="startAs('윤혜정')">
+      <button class="worker-btn w-1" onclick="startAs('윤혜정')">
         <span class="wb-icon">👤</span>
         <span class="wb-name">윤혜정</span>
+        <span class="wb-hint">일반 + 🔥 스팀</span>
+      </button>
+      <button class="worker-btn w-2" onclick="startAs('김이슬')">
+        <span class="wb-icon">👤</span>
+        <span class="wb-name">김이슬</span>
         <span class="wb-hint">일반</span>
       </button>
     </div>
@@ -826,7 +826,7 @@ function render(){
   const btn=document.getElementById('btnComplete');
   
   // ★ v2.6: 물건확인 자동 기록 기준을 '일반(normal) 상품 100%'로 변경
-  //   이유: 이혜정은 스팀을 단기 알바에게 맡기므로, 본인 일반 상품만 끝나면 자동 기록
+  //   이유: 윤혜정은 스팀을 단기 알바에게 맡기므로, 본인 일반 상품만 끝나면 자동 기록
   //   - 일반 상품만 있는 세션: 일반 100% = 전체 100% → 기존과 동일하게 작동
   //   - 스팀도 있는 세션: 일반 100%면 자동 기록 (스팀 완료 안 기다림)
   const normalDone = normalItems.filter(i=>i.검수상태).length;
