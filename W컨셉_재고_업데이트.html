@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>the J.Soo · W컨셉 재고 작업</title>
-<!-- xlsx-js-style: SheetJS CE + 셀 스타일 완전 지원 -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
@@ -234,7 +233,7 @@ tr:hover td{background:var(--bg);}
       <div class="rule-card"><div class="rnum">5</div><div class="rtext">예약상품 + 실재고 &gt; 0 → <span class="chip c-ylw">바로배송으로 변경</span>, 일반상품 + 실재고 &lt; 0 → <span class="chip c-pur">예약배송으로 변경</span>.</div></div>
       <div class="rule-card"><div class="rnum">6</div><div class="rtext">삽입한 5개 열 <strong>N1~R1 헤더</strong>를 <span class="chip c-red">연빨간색 배경</span>으로. 확인 후 직접 삭제할 열이야.</div></div>
       <div class="rule-card"><div class="rnum">7</div><div class="rtext"><strong>1행에 필터</strong>를 걸어줘.</div></div>
-      <div class="rule-card"><div class="rnum">8</div><div class="rtext"><strong>1행 고정</strong> + 모든 열 너비를 가장 긴 글자 기준으로 <strong>자동 조절</strong>해줘.</div></div>
+      <div class="rule-card"><div class="rnum">8</div><div class="rtext">모든 열 너비를 가장 긴 글자 기준으로 <strong>자동 조절</strong>해줘.</div></div>
       <div class="rule-card"><div class="rnum">9</div><div class="rtext">전체 글자체 <strong>Calibri</strong>, <strong>9pt</strong>로 통일해줘.</div></div>
       <div class="rule-card"><div class="rnum">10</div><div class="rtext">작업 후 <strong>[예약배송으로 변경]</strong>, <strong>[바로배송으로 변경]</strong> 목록을 상품명·옵션 한 줄씩 표시. 없으면 "없음.", 중복 제거.</div></div>
       <div class="rule-card"><div class="rnum">11</div><div class="rtext"><strong>재고관리_최종.xlsx</strong>(검수용) + <strong>W컨셉_업데이트.xlsx</strong>(업로드용) 생성. E, F, H, I열 비워둬.</div></div>
@@ -275,28 +274,32 @@ tr:hover td{background:var(--bg);}
       </table>
     </div>
     <div class="fcard">
-      <div class="fcard-head">➕ W컨셉 재고 입력 엑셀 생성기</div>
-      <div class="frow">W컨셉 업로드용 빈 양식 파일을 바로 다운로드합니다. <span class="ftag t-green">빈 양식 즉시 생성</span></div>
+      <div class="fcard-head">🔄 상품명 자동 처리 패턴</div>
+      <div class="frow">[the J.Soo Premium], [시크릿] 등 대괄호 태그 자동 제거 <span class="ftag t-gray">자동</span></div>
+      <div class="frow">상품명_컬러 형태에서 컬러 분리 <span class="ftag t-gray">자동</span></div>
+      <div class="frow">(2color), (3color) 표기 자동 제거 <span class="ftag t-gray">자동</span></div>
+      <div class="frow">영문/한글 색상명 자동 변환 (Black↔블랙 등) <span class="ftag t-gray">자동</span></div>
     </div>
   </div>
 
 </div>
 
 <script>
-// ── xlsx-js-style 로드 확인 ──
+// ── 라이브러리 로드 확인 ──
 window.addEventListener('load', () => {
   if(typeof XLSX === 'undefined'){
-    document.getElementById('status-bar').className='status-bar error';
-    document.getElementById('status-bar').textContent='⚠️ 라이브러리 로드 실패. 인터넷 연결을 확인해주세요.';
-    document.getElementById('status-bar').style.display='block';
+    const b = document.getElementById('status-bar');
+    b.className='status-bar error';
+    b.textContent='⚠️ 라이브러리 로드 실패. 인터넷 연결을 확인해주세요.';
+    b.style.display='block';
   }
 });
 
-const FILES={sm:null,sbr:null,wc:null};
-let G_RESULT=null,G_WC_RAW=null,G_UPDATE_ROWS=[];
+const FILES = {sm:null, sbr:null, wc:null};
+let G_RESULT=null, G_WC_RAW=null, G_UPDATE_ROWS=[], G_WC_HEADER=[];
 
-// ── 색상 매핑: 영문 → 한글 ──
-const EN_KO={
+// ── 색상 매핑: 영문 → 한글 (STK 기준) ──
+const EN_KO = {
   'apricot pink':'살구핑크','beige':'베이지','black':'블랙','blue':'블루',
   'brown':'브라운','camel':'카멜','charcoal':'차콜','classic black':'클래식블랙',
   'cream':'크림','grey':'그레이','gray':'그레이','indi pink':'인디핑크',
@@ -305,339 +308,393 @@ const EN_KO={
   'mocha':'모카','mocha mousse':'모카무스','moon navy':'문네이비','navy':'네이비',
   'petal pink':'페탈핑크','pink':'핑크','pink beige':'핑크베이지',
   'sand beige':'샌드베이지','serene blue':'세렌블루','sky blue':'소라',
-  'soft cream':'소프트크림','yellow':'옐로우',
-  'lemon':'레몬','grey sky blue':'회소라',
+  'soft cream':'소프트크림','yellow':'옐로우','lemon':'레몬','grey sky blue':'회소라',
+  'butter':'버터','apricot':'살구','indie pink':'인디핑크','cream beige':'크림베이지',
+  'indigo':'진청',
 };
-// STK 오타 보정
-const STK_FIX={'레몬엘로우':'레몬옐로우'};
-// 사이즈 매핑
-const KO_SIZE={'프리':'free','스몰':'s','미디움':'m','라지':'l','free':'free','s':'s','m':'m','l':'l','xl':'xl'};
-const SKIP_KW='마르셀 실키 반목 t';
+const STK_FIX = {'레몬엘로우':'레몬옐로우'};
+const KO_SIZE = {
+  '프리':'free','스몰':'s','미디움':'m','라지':'l',
+  'free':'free','s':'s','m':'m','l':'l','xl':'xl'
+};
+const SKIP_KW = '마르셀 실키 반목 t';
 
-function stripBrackets(s){return String(s||'').replace(/\[.*?\]/g,'').trim();}
-function normName(s){return stripBrackets(s).toLowerCase().trim().replace(/\s+/g,' ');}
+// ── 유틸 함수 ──
+function stripAllBrackets(s){ return String(s||'').replace(/\[.*?\]/g,'').trim(); }
+function normName(s){ return stripAllBrackets(s).toLowerCase().trim().replace(/\s+/g,' '); }
+
+function getBaseName(name){
+  let n = normName(name);
+  n = n.replace(/_.*$/,'');                          // _컬러 제거
+  n = n.replace(/\s*\(\d+color\)\s*$/,'');           // (2color) 제거
+  n = n.replace(/\s*\([^)]*color[^)]*\)\s*$/,'');    // (Ncolor) 제거
+  return n.trim();
+}
 
 function toKoColor(s){
-  s=String(s||'').trim();
-  const mapped=EN_KO[s.toLowerCase()];
-  if(mapped)return mapped;
-  return STK_FIX[s]||s;
+  s = String(s||'').trim();
+  const mapped = EN_KO[s.toLowerCase()];
+  if(mapped) return mapped;
+  return STK_FIX[s] || s;
 }
+
 function parseSize(s){
-  s=String(s||'').trim().toLowerCase();
-  return KO_SIZE[s]||s;
+  s = String(s||'').trim().toLowerCase();
+  return KO_SIZE[s] || s;
 }
-function makeKey(name,opt){
-  const base=normName(name).replace(/_.*$/,'').trim();
-  const parts=String(opt||'').trim().split(',').map(p=>p.trim());
-  const color=toKoColor(parts[0]||'');
-  const size=parseSize(parts[1]||'free');
-  return`${base}|||${color}|||${size}`;
+
+// STK/SBR 키 생성
+function makeKey(name, opt){
+  const base = getBaseName(name);
+  const parts = String(opt||'').trim().split(',').map(p=>p.trim());
+  const color = toKoColor(parts[0]||'');
+  const size  = parseSize(parts[1]||'free');
+  return `${base}|||${color}|||${size}`;
 }
+
+// WC 옵션1 파싱 → 한글 색상 + 사이즈
 function parseWcOpt(opt1){
-  const opt=String(opt1||'').trim();
-  const m=opt.match(/^(.+?)\s*\((.+?)\)$/);
-  if(m)return{color:toKoColor(m[1].trim()),size:parseSize(m[2].trim())};
-  return{color:toKoColor(opt),size:'free'};
+  const opt = String(opt1||'').trim();
+  const m = opt.match(/^(.+?)\s*\((.+?)\)$/);
+  if(m){
+    const colorPart = m[1].trim();
+    const sizePart  = m[2].trim();
+    // 색상 부분이 순수 사이즈 코드면 (e.g. "S", "M") → 색상 없음
+    if(KO_SIZE[colorPart.toLowerCase()]){
+      return {color:'', size: parseSize(colorPart)};
+    }
+    return {color: toKoColor(colorPart), size: parseSize(sizePart)};
+  }
+  // 괄호 없음: 사이즈만인지 확인
+  if(KO_SIZE[opt.toLowerCase()]){
+    return {color:'', size: parseSize(opt)};
+  }
+  return {color: toKoColor(opt), size:'free'};
 }
-function lookupSm(base,color,size,smMap){
-  const k=`${base}|||${color}|||${size}`;
-  if(k in smMap)return k;
-  const kf=`${base}|||${color}|||free`;
-  if(kf in smMap)return kf;
+
+// STK 조회 (size → free fallback, 색상 없으면 사이즈만 매칭)
+function lookupSm(base, color, size, smMap){
+  if(color){
+    const k1 = `${base}|||${color}|||${size}`;
+    if(k1 in smMap) return k1;
+    const k2 = `${base}|||${color}|||free`;
+    if(k2 in smMap) return k2;
+  } else {
+    // 색상 없는 경우: base + size로 매칭
+    for(const k of Object.keys(smMap)){
+      const parts = k.split('|||');
+      if(parts[0]===base && parts[2]===size) return k;
+    }
+    for(const k of Object.keys(smMap)){
+      if(k.startsWith(`${base}|||`)) return k;
+    }
+  }
   return null;
 }
 
-function loadFile(type,input){
-  const file=input.files[0];if(!file)return;
-  const box=document.getElementById(`box-${type}`);
-  const fname=document.getElementById(`fname-${type}`);
+// 세트 여부 판별 (위치 무관)
+function isSetProduct(name){ return String(name||'').includes('[세트]'); }
+
+// 파일 로드
+function loadFile(type, input){
+  const file = input.files[0]; if(!file) return;
+  const box   = document.getElementById(`box-${type}`);
+  const fname = document.getElementById(`fname-${type}`);
   if(type==='sm'){
-    Papa.parse(file,{header:true,encoding:'EUC-KR',complete(res){
-      FILES.sm=res.data.filter(r=>r['상품명']);
-      box.classList.add('done');fname.textContent='✓ '+file.name;checkReady();
+    Papa.parse(file,{header:true, encoding:'EUC-KR', complete(res){
+      FILES.sm = res.data.filter(r=>r['상품명']);
+      box.classList.add('done'); fname.textContent='✓ '+file.name; checkReady();
     }});
-  }else{
-    const reader=new FileReader();
-    reader.onload=e=>{
-      const wb=XLSX.read(e.target.result,{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      FILES[type]=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      box.classList.add('done');fname.textContent='✓ '+file.name;checkReady();
+  } else {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wb = XLSX.read(e.target.result,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      FILES[type] = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      box.classList.add('done'); fname.textContent='✓ '+file.name; checkReady();
     };
     reader.readAsArrayBuffer(file);
   }
 }
-function checkReady(){document.getElementById('run-btn').disabled=!(FILES.sm&&FILES.sbr&&FILES.wc);}
+function checkReady(){
+  document.getElementById('run-btn').disabled = !(FILES.sm && FILES.sbr && FILES.wc);
+}
 
+// ── 메인 처리 ──
 function runProcess(){
   showStatus('info','⏳ 계산 중입니다...');
   setTimeout(()=>{
-    try{const r=process();G_RESULT=r;showResult(r);showStatus('success',`✅ 완료! 재고 업데이트 ${r.cntUpdated}건 · 엑셀 다운로드 버튼을 눌러주세요.`);}
-    catch(e){showStatus('error','❌ 오류: '+e.message);console.error(e);}
+    try{
+      const r = process();
+      G_RESULT = r;
+      showResult(r);
+      showStatus('success',`✅ 완료! 재고 업데이트 ${r.cntUpdated}건 · 엑셀 다운로드 버튼을 눌러주세요.`);
+    } catch(e){
+      showStatus('error','❌ 오류: '+e.message);
+      console.error(e);
+    }
   },50);
 }
 
 function process(){
-  const sbrDict={};
-  for(let i=2;i<FILES.sbr.length;i++){
-    const row=FILES.sbr[i];const name=row[4],opt=row[5],qty=row[7];
-    if(!name||name==='상품명')continue;
-    const key=makeKey(name,opt);
-    sbrDict[key]=(sbrDict[key]||0)+(parseInt(qty)||0);
+  // SBR dict
+  const sbrDict = {};
+  for(let i=2; i<FILES.sbr.length; i++){
+    const row = FILES.sbr[i];
+    const name=row[4], opt=row[5], qty=row[7];
+    if(!name || name==='상품명') continue;
+    const key = makeKey(name, opt);
+    sbrDict[key] = (sbrDict[key]||0) + (parseInt(qty)||0);
   }
-  const smGa={},smSil={},smPul={},smCur={},smMi={},smSon={};
+
+  // STK maps
+  const smGa={}, smSil={}, smPul={}, smCur={}, smMi={}, smSon={};
   for(const row of FILES.sm){
-    const cur=parseInt(row['현재재고'])||0;
-    const mi=parseInt(row['미발송주문수'])||0;
-    const key=makeKey(row['상품명'],row['옵션명']);
-    const son=sbrDict[key]||0;
-    smGa[key]=cur-mi+son;smSil[key]=cur-mi;
+    const cur = parseInt(row['현재재고'])||0;
+    const mi  = parseInt(row['미발송주문수'])||0;
+    const key = makeKey(row['상품명'], row['옵션명']);
+    const son = sbrDict[key]||0;
+    smGa[key]=cur-mi+son; smSil[key]=cur-mi;
     smPul[key]=String(row['품절여부']||'').trim();
-    smCur[key]=cur;smMi[key]=mi;smSon[key]=son;
+    smCur[key]=cur; smMi[key]=mi; smSon[key]=son;
   }
-  const wcRows=FILES.wc;
-  const COL_TYPE=2,COL_PNAME=6,COL_OPT1=7,COL_STATE=10,COL_KR=12,COL_MARGIN=18;
-  let cntUpdated=0,cntSold=0,cntMargin=0,cntSame=0,cntKw=0,cntUnpause=0;
-  const listReserve=[],listImmediate=[];
-  G_UPDATE_ROWS=[];
-  const modRows=wcRows.map(r=>Array.isArray(r)?[...r]:[]);
 
-  for(let i=1;i<wcRows.length;i++){
-    const row=wcRows[i];
-    const product=String(row[COL_PNAME]||'').trim();
-    const option1=String(row[COL_OPT1]||'').trim();
-    const 상품유형=String(row[COL_TYPE]||'').trim();
-    const 재고상태=String(row[COL_STATE]||'').trim();
-    const 마진율=String(row[COL_MARGIN]||'').trim();
-    const 현재KR=parseInt(row[COL_KR])||0;
-    const 상품코드=row[3];const 옵션코드=row[4];
+  const wcRows = FILES.wc;
+  G_WC_HEADER  = wcRows[0] ? [...wcRows[0]] : [];
 
-    if(!product)continue;
-    if(product.toLowerCase().includes(SKIP_KW)){cntKw++;continue;}
-    if(마진율==='1'){cntMargin++;continue;}
+  // 원본 WC 열 인덱스 (삽입 전)
+  const COL_TYPE=2, COL_PNAME=6, COL_OPT1=7, COL_STATE=10, COL_KR=12, COL_MARGIN=18;
+  const COL_코드=3, COL_옵션코드=4;
 
-    let 가용재고,실재고_val,품절여부_val,현재재고_val,미발송_val,선주문_val,matched=false;
-    const isSet=product.startsWith('[세트]');
+  let cntUpdated=0, cntSold=0, cntMargin=0, cntSame=0, cntKw=0, cntUnpause=0;
+  const listReserve=[], listImmediate=[];
+  G_UPDATE_ROWS = [];
 
-    if(isSet){
-      const info=getSetInfo(product,option1,smGa,smSil,smPul,smCur,smMi,smSon);
-      if(info){({가용재고,실재고_val,품절여부_val,현재재고_val,미발송_val,선주문_val}=info);matched=true;}
-    }else{
-      const{color,size}=parseWcOpt(option1);
-      const base=normName(product).replace(/_.*$/,'').trim();
-      const mk=lookupSm(base,color,size,smGa);
+  // modRows: 원본 데이터 복사본 + _메타 속성
+  const modRows = wcRows.map(r => Array.isArray(r) ? [...r] : []);
+
+  for(let i=1; i<wcRows.length; i++){
+    const row    = wcRows[i];
+    const product  = String(row[COL_PNAME]||'').trim();
+    const option1  = String(row[COL_OPT1]||'').trim();
+    const 상품유형  = String(row[COL_TYPE]||'').trim();
+    const 재고상태  = String(row[COL_STATE]||'').trim();
+    const 마진율    = String(row[COL_MARGIN]||'').trim();
+    const 현재KR   = parseInt(row[COL_KR])||0;
+    const 상품코드  = row[COL_코드];
+    const 옵션코드  = row[COL_옵션코드];
+
+    if(!product) continue;
+    if(product.toLowerCase().includes(SKIP_KW)){ cntKw++; continue; }
+    if(마진율==='1'){ cntMargin++; continue; }
+
+    let 가용재고, 실재고_val, 품절여부_val, 현재재고_val, 미발송_val, 선주문_val, matched=false;
+
+    if(isSetProduct(product)){
+      // 세트: [세트] 텍스트 제거 + 대괄호 전체 제거 + _컬러 제거 후 + 분리
+      let setRaw = String(product).replace('[세트]','');
+      setRaw = stripAllBrackets(setRaw).trim();
+      setRaw = setRaw.replace(/_.*$/,'').trim();
+      const comps = setRaw.split('+').map(c=>c.trim());
+      const o = parseWcOpt(option1);
+      const color=o.color, size=o.size;
+      const gaL=[], silL=[], pulL=[], curL=[], miL=[], sonL=[];
+      let ok = true;
+      for(const comp of comps){
+        const cb = getBaseName(comp);
+        const mk = lookupSm(cb, color, size, smGa);
+        if(!mk){ ok=false; break; }
+        gaL.push(smGa[mk]); silL.push(smSil[mk]); pulL.push(smPul[mk]||'품절');
+        curL.push(smCur[mk]); miL.push(smMi[mk]); sonL.push(smSon[mk]||0);
+      }
+      if(ok && gaL.length){
+        품절여부_val = pulL.some(p=>p==='미품절') ? '미품절' : '품절';
+        const minIdx = gaL.indexOf(Math.min(...gaL));
+        가용재고     = Math.min(...gaL);
+        실재고_val   = Math.min(...silL.map(v=>v||0));
+        현재재고_val = curL[minIdx]; 미발송_val=miL[minIdx]; 선주문_val=sonL[minIdx];
+        matched = true;
+      }
+    } else {
+      const o    = parseWcOpt(option1);
+      const base = getBaseName(product);
+      const mk   = lookupSm(base, o.color, o.size, smGa);
       if(mk){
-        가용재고=smGa[mk];실재고_val=smSil[mk];품절여부_val=smPul[mk]||'품절';
-        현재재고_val=smCur[mk];미발송_val=smMi[mk];선주문_val=smSon[mk]||0;matched=true;
+        가용재고=smGa[mk]; 실재고_val=smSil[mk]; 품절여부_val=smPul[mk]||'품절';
+        현재재고_val=smCur[mk]; 미발송_val=smMi[mk]; 선주문_val=smSon[mk]||0;
+        matched=true;
       }
     }
 
-    if(!matched){if(재고상태==='품절(재고없음)')cntSold++;continue;}
-
-    if(선주문_val==null)선주문_val=0;
-    if(현재재고_val==null)현재재고_val=0;
-    if(미발송_val==null)미발송_val=0;
-
-    modRows[i]._현재재고=현재재고_val;modRows[i]._미발송수=미발송_val;
-    modRows[i]._선주문수량=선주문_val;modRows[i]._가용재고=가용재고;modRows[i]._검증='';
-
-    let updated=false;
-    if(재고상태==='품절(재고없음)'){
-      if(품절여부_val==='미품절'){if(현재KR!==가용재고){cntUpdated++;updated=true;}cntUnpause++;}
-      else{cntSold++;continue;}
-    }else{
-      if(현재KR===가용재고)cntSame++;
-      else{cntUpdated++;updated=true;}
+    if(!matched){
+      if(재고상태==='품절(재고없음)') cntSold++;
+      continue;
     }
 
-    modRows[i][COL_KR]=가용재고;modRows[i]._updated=updated;
+    if(선주문_val==null) 선주문_val=0;
+    if(현재재고_val==null) 현재재고_val=0;
+    if(미발송_val==null) 미발송_val=0;
+
+    // raw data 저장 (항상)
+    modRows[i]._현재재고  = 현재재고_val;
+    modRows[i]._미발송수  = 미발송_val;
+    modRows[i]._선주문수량 = 선주문_val;
+    modRows[i]._가용재고  = 가용재고;
+    modRows[i]._검증      = '';
+
+    let updated = false;
+    if(재고상태==='품절(재고없음)'){
+      if(품절여부_val==='미품절'){
+        if(현재KR !== 가용재고){ cntUpdated++; updated=true; }
+        cntUnpause++;
+      } else { cntSold++; continue; }
+    } else {
+      if(현재KR===가용재고) cntSame++;
+      else { cntUpdated++; updated=true; }
+    }
+
+    modRows[i][COL_KR]  = 가용재고;
+    modRows[i]._updated = updated;
 
     if(실재고_val!=null){
-      if(상품유형==='예약상품'&&실재고_val>0){
-        modRows[i]._검증='바로배송으로 변경';listImmediate.push({name:product,opt:option1});
-      }else if(상품유형==='일반상품'&&실재고_val<0){
-        modRows[i]._검증='예약배송으로 변경';listReserve.push({name:product,opt:option1});
+      if(상품유형==='예약상품' && 실재고_val>0){
+        modRows[i]._검증='바로배송으로 변경';
+        listImmediate.push({name:product, opt:option1});
+      } else if(상품유형==='일반상품' && 실재고_val<0){
+        modRows[i]._검증='예약배송으로 변경';
+        listReserve.push({name:product, opt:option1});
       }
     }
-    if(updated)G_UPDATE_ROWS.push({상품코드,옵션코드,상품명:product,옵션1:option1,KR수량:가용재고});
+    if(updated) G_UPDATE_ROWS.push({상품코드, 옵션코드, 상품명:product, 옵션1:option1, KR수량:가용재고});
   }
 
-  G_WC_RAW=modRows;
-  const dedup=arr=>{const s=new Set();return arr.filter(({name})=>{if(s.has(name))return false;s.add(name);return true;});};
-  return{cntUpdated,cntSold,cntMargin,cntSame,cntKw,cntUnpause,listReserve:dedup(listReserve),listImmediate:dedup(listImmediate)};
+  G_WC_RAW = modRows;
+  const dedup = arr => { const s=new Set(); return arr.filter(({name})=>{ if(s.has(name))return false; s.add(name); return true; }); };
+  return {cntUpdated, cntSold, cntMargin, cntSame, cntKw, cntUnpause,
+    listReserve: dedup(listReserve), listImmediate: dedup(listImmediate)};
 }
 
-function getSetInfo(product,option1,smGa,smSil,smPul,smCur,smMi,smSon){
-  const raw=product.replace(/\[세트\]\s*/,'').trim();
-  const comps=raw.split('+').map(s=>s.trim());
-  const{color,size}=parseWcOpt(option1);
-  const gaL=[],silL=[],pulL=[],curL=[],miL=[],sonL=[];
-  for(const comp of comps){
-    const cb=comp.toLowerCase().replace(/_.*$/,'').trim();
-    const mk=lookupSm(cb,color,size,smGa);
-    if(!mk)return null;
-    gaL.push(smGa[mk]);silL.push(smSil[mk]);pulL.push(smPul[mk]||'품절');
-    curL.push(smCur[mk]);miL.push(smMi[mk]);sonL.push(smSon[mk]||0);
-  }
-  if(gaL.some(v=>v===undefined||v===null))return null;
-  const 품절여부_val=pulL.some(p=>p==='미품절')?'미품절':'품절';
-  const minIdx=gaL.indexOf(Math.min(...gaL));
-  return{가용재고:Math.min(...gaL),실재고_val:Math.min(...silL.map(v=>v||0)),
-    품절여부_val,현재재고_val:curL[minIdx],미발송_val:miL[minIdx],선주문_val:sonL[minIdx]};
-}
-
-// ── 스타일 정의 (xlsx-js-style 형식) ──
+// ── 스타일 정의 ──
 const S = {
-  // 폰트
-  fontCal:    {name:'Calibri',sz:9},
-  fontRedBold:{name:'Calibri',sz:9,bold:true,color:{rgb:'FF0000'}},
-  // 배경
-  fillRedHdr: {patternType:'solid',fgColor:{rgb:'FFCCCC'}},  // N1~R1 헤더
-  fillYellow: {patternType:'solid',fgColor:{rgb:'FFFF99'}},  // 바로배송
-  fillPurple: {patternType:'solid',fgColor:{rgb:'E6CCFF'}},  // 예약배송
+  fontCal:    {name:'Calibri', sz:9},
+  fontRedBold:{name:'Calibri', sz:9, bold:true, color:{rgb:'FF0000'}},
+  fillRedHdr: {patternType:'solid', fgColor:{rgb:'FFCCCC'}},
+  fillYellow: {patternType:'solid', fgColor:{rgb:'FFFF99'}},
+  fillPurple: {patternType:'solid', fgColor:{rgb:'E6CCFF'}},
 };
 
-// 셀 주소 → 스타일 적용 헬퍼
-function setCell(ws, col, row, value, type, style){
+function setCell(ws, col, row, value, isNum, style){
   const addr = XLSX.utils.encode_cell({c:col, r:row});
-  let cell;
-  if(type==='n') cell={v:value===''?0:Number(value)||0, t:'n'};
-  else cell={v:value===null||value===undefined?'':value, t:'s'};
-  if(style) cell.s=style;
-  ws[addr]=cell;
+  const cell  = isNum
+    ? {v: value===''||value==null ? 0 : Number(value)||0, t:'n'}
+    : {v: value==null ? '' : String(value), t:'s'};
+  if(style) cell.s = style;
+  ws[addr] = cell;
 }
 
 // ── 재고관리_최종 다운로드 ──
 function downloadFinal(){
-  if(!G_WC_RAW){alert('먼저 실행해주세요.');return;}
+  if(!G_WC_RAW){ alert('먼저 실행해주세요.'); return; }
 
-  // 헤더 구성
-  const headerRow=[...(G_WC_RAW[0]||[])];
-  headerRow.splice(13,0,'검증','현재재고','미발송수','선주문수량','가용재고');
+  const headerRow = [...G_WC_HEADER];
+  headerRow.splice(13, 0, '검증','현재재고','미발송수','선주문수량','가용재고');
 
-  // 데이터 행 수집
-  const dataRows=[];
-  const metaRows=[];
-  for(let i=1;i<G_WC_RAW.length;i++){
-    const row=G_WC_RAW[i];
-    if(!row||!row[6])continue;
-    const base=[];
-    for(let j=0;j<Math.max(row.length,23);j++)base.push(row[j]!==undefined?row[j]:'');
-    base.splice(13,0,
+  const dataRows=[], metaRows=[];
+  for(let i=1; i<G_WC_RAW.length; i++){
+    const row = G_WC_RAW[i];
+    if(!row||!row[6]) continue;
+    const base = [];
+    for(let j=0; j<Math.max(row.length,23); j++) base.push(row[j]!==undefined ? row[j] : '');
+    base.splice(13, 0,
       row._검증||'',
-      row._현재재고!==undefined?row._현재재고:'',
-      row._미발송수!==undefined?row._미발송수:'',
-      row._선주문수량!==undefined?row._선주문수량:'',
-      row._가용재고!==undefined?row._가용재고:''
+      row._현재재고!==undefined ? row._현재재고 : '',
+      row._미발송수!==undefined ? row._미발송수 : '',
+      row._선주문수량!==undefined ? row._선주문수량 : '',
+      row._가용재고!==undefined ? row._가용재고 : ''
     );
     dataRows.push(base);
     metaRows.push({updated:!!row._updated, 검증:row._검증||''});
   }
 
-  const totalCols=headerRow.length;
+  const totalCols = headerRow.length;
+  const ws = {};
+  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:dataRows.length, c:totalCols-1}});
+  ws['!autofilter'] = {ref:`A1:${XLSX.utils.encode_col(totalCols-1)}1`};
+  ws['!sheetViews'] = [{workbookViewId:0, pane:{ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'}, selection:[{pane:'bottomLeft',activeCell:'A1',sqref:'A1'}]}];
 
-  // 워크시트 직접 구성
-  const ws={};
-  const ref=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:dataRows.length,c:totalCols-1}});
-  ws['!ref']=ref;
-
-  // 1행 고정 - pane 방식으로 직접 XML 삽입
-  ws['!sheetViews']=[{
-    workbookViewId:0,
-    pane:{ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'},
-    selection:[{pane:'bottomLeft',activeCell:'A1',sqref:'A1'}]
-  }];
-
-  // 자동 필터
-  ws['!autofilter']={ref:`A1:${XLSX.utils.encode_col(totalCols-1)}1`};
-
-  // 열 너비 계산
-  const colWidths=new Array(totalCols).fill(8);
-  headerRow.forEach((v,i)=>{
-    const len=String(v||'').split('').reduce((a,c)=>a+(c.charCodeAt(0)>127?2:1),0);
-    colWidths[i]=Math.max(colWidths[i],len+2);
-  });
-  dataRows.forEach(row=>{
+  // 열 너비
+  const colWidths = new Array(totalCols).fill(8);
+  [...[headerRow], ...dataRows].forEach(row=>{
     row.forEach((v,i)=>{
-      const len=String(v||'').split('').reduce((a,c)=>a+(c.charCodeAt(0)>127?2:1),0);
-      colWidths[i]=Math.max(colWidths[i]||8,len+2);
+      const len = String(v||'').split('').reduce((a,c)=>a+(c.charCodeAt(0)>127?2:1),0);
+      colWidths[i] = Math.max(colWidths[i]||8, len+2);
     });
   });
-  ws['!cols']=colWidths.map(w=>({wch:Math.min(w,60)}));
+  ws['!cols'] = colWidths.map(w=>({wch:Math.min(w,60)}));
 
-  // 1행 헤더 쓰기
+  // 1행 헤더
   headerRow.forEach((v,ci)=>{
-    const style=(ci>=13&&ci<=17)
-      ? {font:S.fontCal, fill:S.fillRedHdr}  // N~R 헤더 연빨간
-      : {font:S.fontCal};
-    setCell(ws,ci,0,v,'s',style);
+    const style = (ci>=13&&ci<=17) ? {font:S.fontCal, fill:S.fillRedHdr} : {font:S.fontCal};
+    setCell(ws, ci, 0, v, false, style);
   });
 
-  // 데이터 행 쓰기
+  // 데이터 행
   dataRows.forEach((row,ri)=>{
-    const R=ri+1;
-    const meta=metaRows[ri];
+    const R    = ri+1;
+    const meta = metaRows[ri];
     row.forEach((v,ci)=>{
-      let style={font:S.fontCal};
-      // M열(col 12) - 변경된 경우 빨간 Bold
-      if(ci===12&&meta.updated){
-        style={font:S.fontRedBold};
-      }
-      // N열(col 13) - 검증 배경색
-      else if(ci===13){
-        if(meta.검증==='바로배송으로 변경') style={font:S.fontCal,fill:S.fillYellow};
-        else if(meta.검증==='예약배송으로 변경') style={font:S.fontCal,fill:S.fillPurple};
-      }
-      // 숫자 열 (O~R = col 14~17)
-      const isNum=(ci===12||ci===14||ci===15||ci===16||ci===17);
-      setCell(ws,ci,R,v,isNum?'n':'s',style);
+      let style = {font:S.fontCal};
+      if(ci===12 && meta.updated)          style = {font:S.fontRedBold};
+      else if(ci===13 && meta.검증==='바로배송으로 변경') style = {font:S.fontCal, fill:S.fillYellow};
+      else if(ci===13 && meta.검증==='예약배송으로 변경') style = {font:S.fontCal, fill:S.fillPurple};
+      const isNum = [12,14,15,16,17].includes(ci);
+      setCell(ws, ci, R, v, isNum, style);
     });
   });
 
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
-  XLSX.writeFile(wb,'재고관리_최종.xlsx');
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  XLSX.writeFile(wb, '재고관리_최종.xlsx');
 }
 
 // ── W컨셉_업데이트 다운로드 ──
 function downloadWC(){
-  if(!G_UPDATE_ROWS.length){alert('먼저 실행해주세요.');return;}
-  const wb=XLSX.utils.book_new();
-  const wsData=[
+  if(!G_UPDATE_ROWS.length){ alert('먼저 실행해주세요.'); return; }
+  const wb = XLSX.utils.book_new();
+  const wsData = [
     ['*상품정보는 재고관리내역을 엑셀파일을 다운로드 받아 확인하시어 입력해주세요  ※ 최대 100개까지 가능합니다.','','','','','','','',''],
     ['*통합재고설정 상품에  US/CN 재고 수량이 입력하시면 엑셀업로드가 되지 않습니다','','','','','','','',''],
     ['상품코드','옵션 코드','상품명','옵션1','옵션2','옵션3','KR수량','US수량','CN수량'],
   ];
-  for(const r of G_UPDATE_ROWS)wsData.push([r.상품코드,r.옵션코드,r.상품명,r.옵션1,'','',r.KR수량,'','']);
-  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  for(const r of G_UPDATE_ROWS) wsData.push([r.상품코드,r.옵션코드,r.상품명,r.옵션1,'','',r.KR수량,'','']);
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
   ws['!cols']=[{wch:14},{wch:22},{wch:58},{wch:11},{wch:8},{wch:8},{wch:9},{wch:9},{wch:9}];
-  XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
-  XLSX.writeFile(wb,'W컨셉_업데이트.xlsx');
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  XLSX.writeFile(wb, 'W컨셉_업데이트.xlsx');
 }
 
 // ── UI ──
 function showResult(r){
   document.getElementById('result-area').style.display='block';
-  document.getElementById('r-updated').textContent=r.cntUpdated;
-  document.getElementById('r-unpause').textContent=r.cntUnpause;
-  document.getElementById('r-reserve').textContent=r.listReserve.length;
-  document.getElementById('r-immediate').textContent=r.listImmediate.length;
-  document.getElementById('r-sold').textContent=r.cntSold;
-  document.getElementById('r-same').textContent=r.cntSame;
-  document.getElementById('r-margin').textContent=r.cntMargin;
-  document.getElementById('r-keyword').textContent=r.cntKw;
+  document.getElementById('r-updated').textContent   = r.cntUpdated;
+  document.getElementById('r-unpause').textContent   = r.cntUnpause;
+  document.getElementById('r-reserve').textContent   = r.listReserve.length;
+  document.getElementById('r-immediate').textContent = r.listImmediate.length;
+  document.getElementById('r-sold').textContent      = r.cntSold;
+  document.getElementById('r-same').textContent      = r.cntSame;
+  document.getElementById('r-margin').textContent    = r.cntMargin;
+  document.getElementById('r-keyword').textContent   = r.cntKw;
   renderList('list-reserve','cnt-reserve',r.listReserve);
   renderList('list-immediate','cnt-immediate',r.listImmediate);
 }
 function renderList(lid,cid,items){
-  document.getElementById(cid).textContent=items.length+'건';
-  document.getElementById(lid).innerHTML=items.length===0
-    ?'<div class="none-text">없음.</div>'
-    :items.map(({name,opt})=>`<div class="prow"><span class="pname">${esc(name)}</span><span class="popt">${esc(opt)}</span></div>`).join('');
+  document.getElementById(cid).textContent = items.length+'건';
+  document.getElementById(lid).innerHTML = items.length===0
+    ? '<div class="none-text">없음.</div>'
+    : items.map(({name,opt})=>`<div class="prow"><span class="pname">${esc(name)}</span><span class="popt">${esc(opt)}</span></div>`).join('');
 }
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function showStatus(type,msg){const b=document.getElementById('status-bar');b.className='status-bar '+type;b.textContent=msg;b.style.display='block';}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showStatus(type,msg){ const b=document.getElementById('status-bar'); b.className='status-bar '+type; b.textContent=msg; b.style.display='block'; }
 function showPage(id,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
